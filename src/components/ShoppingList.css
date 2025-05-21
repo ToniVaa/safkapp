@@ -1,0 +1,32 @@
+/* src/components/ShoppingList.css */
+.shopping-list-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.shopping-list-container h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.shopping-list-container p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.shopping-items {
+    list-style: disc; /* tai square, circle */
+    padding-left: 25px; /* sisennys luettelomerkille */
+}
+
+.shopping-items li {
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    color: #444;
+}

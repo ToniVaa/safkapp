@@ -1,0 +1,526 @@
+/* src/styles.css */
+/* Tämä tiedosto sisältää kaikki sovelluksen globaalit CSS-tyylit. */
+
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #eef2f5;
+    color: #333;
+}
+
+.App {
+    text-align: center;
+}
+
+.App-header {
+    background-color: #282c34;
+    padding: 20px;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border-radius: 0 0 8px 8px; /* Pyöristetyt alareunat */
+}
+
+.App-header h1 {
+    margin: 0;
+    font-size: 2.2rem;
+}
+
+.App-nav {
+    display: flex;
+    justify-content: center;
+    background-color: #333;
+    padding: 10px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin: 20px auto;
+    max-width: 900px; /* Levennetty navigaatiota varten */
+}
+
+.App-nav button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    border-radius: 5px;
+    margin: 0 5px;
+}
+
+.App-nav button:hover {
+    background-color: #555;
+}
+
+.App-nav button.active {
+    background-color: #007bff;
+    font-weight: bold;
+}
+
+.App-nav button.active:hover {
+    background-color: #0056b3;
+}
+
+.App-main {
+    padding: 20px;
+    text-align: left;
+}
+
+/* Yleiset lomaketyylit */
+.recipe-form-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.recipe-form h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.ingredient-input-group {
+    display: flex;
+    flex-wrap: wrap; /* Salli rivinvaihto pienemmillä näytöillä */
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.ingredient-input-group input {
+    flex: 1;
+    min-width: 80px; /* Minimi leveys input-kentille */
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.remove-ingredient-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+.remove-ingredient-button:hover {
+    background-color: #c82333;
+}
+
+.add-ingredient-button {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease;
+}
+
+.add-ingredient-button:hover {
+    background-color: #218838;
+}
+
+.submit-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-top: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease;
+}
+
+.submit-button:hover {
+    background-color: #0056b3;
+}
+
+.cancel-button { /* Uusi peruutuspainikkeen tyyli */
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    margin-top: 10px; /* Pieni väli tallennusnapin jälkeen */
+    width: 100%;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease;
+}
+
+.cancel-button:hover {
+    background-color: #5a6268;
+}
+
+
+.success-message {
+    color: #28a745;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 15px;
+    text-align: center;
+}
+
+/* RecipeList.css */
+.recipe-list-container {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.recipe-list-container h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.recipe-items {
+    list-style: none;
+    padding: 0;
+}
+
+.recipe-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    padding: 15px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.recipe-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap; /* Salli rivinvaihto */
+}
+
+.recipe-header input[type="checkbox"] {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    flex-shrink: 0; /* Estä kutistumasta */
+}
+
+.recipe-header label {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+    flex-grow: 1;
+    cursor: pointer;
+    margin-right: 10px; /* Tilaa poistonapille */
+}
+
+.recipe-details h3 {
+    font-size: 1.1rem;
+    color: #555;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+.recipe-details ul,
+.recipe-details ol {
+    list-style-position: inside;
+    padding-left: 0;
+    margin-bottom: 10px;
+}
+
+.recipe-details ul li,
+.recipe-details ol li {
+    margin-bottom: 5px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.delete-icon-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto; /* Push to the right */
+    flex-shrink: 0;
+    font-size: 1.5rem; /* Koko ruksille */
+    color: #dc3545; /* Punainen väri */
+    transition: color 0.2s ease;
+}
+
+.delete-icon-button:hover {
+    color: #c82333;
+}
+
+/* ShoppingList.css */
+.shopping-list-container {
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.shopping-list-container h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.shopping-list-container p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.shopping-items {
+    list-style: disc;
+    padding-left: 25px;
+}
+
+.shopping-items li {
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    color: #444;
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    color: #333;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-buttons button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s ease;
+    flex: 1; /* Tee napeista saman kokoisia */
+}
+
+.modal-buttons .confirm-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal-buttons .confirm-button:hover {
+    background-color: #c82333;
+}
+
+.modal-buttons .cancel-button {
+    background-color: #6c757d;
+    color: white;
+}
+
+.modal-buttons .cancel-button:hover {
+    background-color: #5a6268;
+}
+
+/* Responsiivisuus */
+@media (max-width: 768px) {
+    .App-nav {
+        flex-direction: column;
+        padding: 10px;
+    }
+    .App-nav button {
+        margin: 5px 0;
+        width: 100%;
+    }
+    .ingredient-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .ingredient-input-group input {
+        width: 100%;
+        min-width: unset;
+    }
+    .remove-ingredient-button {
+        width: 100%;
+    }
+    .modal-buttons {
+        flex-direction: column;
+    }
+}
+
+/* LLM-ominaisuuksien tyylit */
+.llm-feature-container {
+    max-width: 700px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.llm-feature-container h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.llm-feature-container textarea {
+    width: calc(100% - 20px);
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    margin-bottom: 15px;
+    resize: vertical;
+}
+
+.llm-feature-container button {
+    background-color: #6f42c1; /* Violetti väri LLM-napeille */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.llm-feature-container button:hover {
+    background-color: #5a35a1;
+}
+
+.llm-result {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #e6e6fa; /* Vaalea violetti tausta */
+    border-radius: 8px;
+    border: 1px solid #c3b0d4;
+    text-align: left;
+    white-space: pre-wrap; /* Säilyttää rivinvaihdot ja välilyönnit */
+    word-wrap: break-word; /* Estää ylivuodon */
+}
+
+.llm-loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #6f42c1;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.suggest-ingredient-button {
+    background-color: #6f42c1; /* Violetti väri */
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s ease;
+    margin-left: 5px;
+    white-space: nowrap; /* Estää napin tekstin rivittymisen */
+}
+
+.suggest-ingredient-button:hover {
+    background-color: #5a35a1;
+}
