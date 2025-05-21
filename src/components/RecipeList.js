@@ -39,9 +39,9 @@ const RecipeList = ({ onSelectRecipes, onEditRecipe }) => {
   // Käsittelee valintaruudun muutokset
   const handleCheckboxChange = (recipeId) => {
     setSelectedRecipeIds((prevSelected) =>
-    prevSelected.includes(recipeId)
-    ? prevSelected.filter((id) => id !== recipeId)
-    : [...prevSelected, recipeId]
+      prevSelected.includes(recipeId)
+        ? prevSelected.filter((id) => id !== recipeId)
+        : [...prevSelected, recipeId]
     );
   };
 
@@ -77,65 +77,65 @@ const RecipeList = ({ onSelectRecipes, onEditRecipe }) => {
 
   return (
     <div className="recipe-list-container">
-    <h2>Reseptit</h2>
-    {recipes.length === 0 ? (
-      <p>Ei reseptejä. Lisää uusia reseptin luo -välilehdeltä.</p>
-    ) : (
-      <ul className="recipe-items">
-      {recipes.map((recipe) => (
-        <li key={recipe.id} className="recipe-item">
-        <div className="recipe-header">
-        <input
-        type="checkbox"
-        id={`recipe-${recipe.id}`}
-        checked={selectedRecipeIds.includes(recipe.id)}
-        onChange={() => handleCheckboxChange(recipe.id)}
-        aria-label={`Valitse resepti ${recipe.nimi}`}
-        />
-        {/* Reseptin nimi klikattavaksi muokkausta varten */}
-        <label
-        htmlFor={`recipe-${recipe.id}`}
-        onClick={() => onEditRecipe(recipe.id)}
-        style={{ cursor: 'pointer' }} // Osoita klikattavuus
-        >
-        {recipe.nimi}
-        </label>
-        <button
-        className="delete-icon-button"
-        onClick={() => handleDeleteClick(recipe)}
-        aria-label={`Poista resepti ${recipe.nimi}`}
-        >
-        &#x2716; {/* Unicode-merkki ruksille */}
-        </button>
-        </div>
-        <div className="recipe-details">
-        <h3>Ainesosat:</h3>
-        <ul>
-        {recipe.ainesosat && recipe.ainesosat.map((ing, idx) => (
-          <li key={idx}>
-          {ing.name} {ing.amount} {ing.unit}
-          </li>
-        ))}
+      <h2>Reseptit</h2>
+      {recipes.length === 0 ? (
+        <p>Ei reseptejä. Lisää uusia reseptin luo -välilehdeltä.</p>
+      ) : (
+        <ul className="recipe-items">
+          {recipes.map((recipe) => (
+            <li key={recipe.id} className="recipe-item">
+              <div className="recipe-header">
+                <input
+                  type="checkbox"
+                  id={`recipe-${recipe.id}`}
+                  checked={selectedRecipeIds.includes(recipe.id)}
+                  onChange={() => handleCheckboxChange(recipe.id)}
+                  aria-label={`Valitse resepti ${recipe.nimi}`}
+                />
+                {/* Reseptin nimi klikattavaksi muokkausta varten */}
+                <label
+                  htmlFor={`recipe-${recipe.id}`}
+                  onClick={() => onEditRecipe(recipe.id)}
+                  style={{ cursor: 'pointer' }} // Osoita klikattavuus
+                >
+                  {recipe.nimi}
+                </label>
+                <button
+                  className="delete-icon-button"
+                  onClick={() => handleDeleteClick(recipe)}
+                  aria-label={`Poista resepti ${recipe.nimi}`}
+                >
+                  &#x2716; {/* Unicode-merkki ruksille */}
+                </button>
+              </div>
+              <div className="recipe-details">
+                <h3>Ainesosat:</h3>
+                <ul>
+                  {recipe.ainesosat && recipe.ainesosat.map((ing, idx) => (
+                    <li key={idx}>
+                      {ing.name} {ing.amount} {ing.unit}
+                    </li>
+                  ))}
+                </ul>
+                <h3>Ohjeet:</h3>
+                <ol>
+                  {recipe.ohjeet && recipe.ohjeet.map((inst, idx) => (
+                    <li key={idx}>{inst}</li>
+                  ))}
+                </ol>
+              </div>
+            </li>
+          ))}
         </ul>
-        <h3>Ohjeet:</h3>
-        <ol>
-        {recipe.ohjeet && recipe.ohjeet.map((inst, idx) => (
-          <li key={idx}>{inst}</li>
-        ))}
-        </ol>
-        </div>
-        </li>
-      ))}
-      </ul>
-    )}
+      )}
 
-    {showConfirmModal && recipeToDelete && (
-      <ConfirmModal
-      message={`Haluatko varmasti poistaa reseptin "${recipeToDelete.nimi}"?`}
-      onConfirm={confirmDelete}
-      onCancel={cancelDelete}
-      />
-    )}
+      {showConfirmModal && recipeToDelete && (
+        <ConfirmModal
+          message={`Haluatko varmasti poistaa reseptin "${recipeToDelete.nimi}"?`}
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
+      )}
     </div>
   );
 };
