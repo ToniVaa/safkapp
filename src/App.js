@@ -47,6 +47,21 @@ function App() {
       <div style={{ textAlign: "center", marginTop: "3rem" }}>
         <h2>Pääsy evätty</h2>
         <p>Tällä Google-tilillä ei ole oikeutta käyttää sovellusta.</p>
+        <button
+          onClick={handleLogout}
+          style={{
+            marginTop: "2rem",
+            background: "none",
+            border: "none",
+            color: "#bbb",
+            fontSize: "0.95rem",
+            opacity: 0.5,
+            cursor: "pointer",
+            textDecoration: "underline"
+          }}
+        >
+          Kirjaudu ulos
+        </button>
       </div>
     );
   }
