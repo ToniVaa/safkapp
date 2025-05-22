@@ -56,7 +56,6 @@ function Login({ onLogin }) {
             boxShadow: "0 2px 8px rgba(66,133,244,0.15)"
           }}
         >
-          <span style={{ marginRight: 8, verticalAlign: "middle" }}>🔒</span>
           Kirjaudu Googlella
         </button>
       </div>
