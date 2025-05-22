@@ -137,7 +137,11 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>SafkApp</h1>
+        <img
+          src="/safkapp_logo.png"
+          alt="SafkApp"
+          className="app-logo"
+        />
       </header>
 
       <nav className="App-nav">

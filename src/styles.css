@@ -662,3 +662,10 @@ body {
 .expand-btn:hover {
   background: #e0e0e0;
 }
+
+.app-logo {
+  height: 120px;      /* Säädä korkeus yläpalkkiin sopivaksi */
+  max-width: 90vw;   /* Skaalaa tarvittaessa */
+  display: block;
+  margin: 0 auto;
+}
