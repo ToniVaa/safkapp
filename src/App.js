@@ -3,13 +3,16 @@
 // HUOM: Tämä tiedosto on tarkoitettu käytettäväksi perinteisessä React-projektirakenteessa,
 // jossa muut komponentit ja tyylit ovat omissa tiedostoissaan.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // Tuo kaikki komponentit omista tiedostoistaan
 import RecipeForm from './components/RecipeForm';
 import RecipeList from './components/RecipeList';
 import ShoppingList from './components/ShoppingList';
 import RecipeEditForm from './components/RecipeEditForm';
 import RecipeIdeaGenerator from './components/RecipeIdeaGenerator';
+import Login from './components/Login';
+import { auth } from './firebase';
+
 
 // Tuo globaalit tyylit
 import './styles.css'; 
@@ -18,6 +21,32 @@ function App() {
   const [selectedRecipes, setSelectedRecipes] = useState([]);
   const [activeTab, setActiveTab] = useState('list'); // 'list', 'form', 'shopping', 'ideas'
   const [editingRecipeId, setEditingRecipeId] = useState(null); // Tila muokattavan reseptin ID:lle
+  const [user, setUser] = useState(null);
+
+  // Tarkista kirjautumistila
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(setUser);
+    return () => unsubscribe();
+  }, []);
+
+  const allowedEmails = [
+    "saara086@gmail.com",
+    "tacerinus@gmail.com"
+    // Lisää sallitut sähköpostit tähän
+  ];
+
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
+  if (user && !allowedEmails.includes(user.email)) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "3rem" }}>
+        <h2>Pääsy evätty</h2>
+        <p>Tällä Google-tilillä ei ole oikeutta käyttää sovellusta.</p>
+      </div>
+    );
+  }
 
   // Käsittelee valittujen reseptien muutokset RecipeList-komponentista
   const handleSelectedRecipesChange = (recipes) => {

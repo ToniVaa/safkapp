@@ -13,6 +13,7 @@ import {
   getDoc, 
   updateDoc 
 } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // HUOM! Korvaa alla olevat paikkamerkit omilla Firebase-projektisi tiedoilla.
 // Löydät nämä tiedot Firebase Consolen Project settings -sivulta.
@@ -43,3 +44,5 @@ export {
   getDoc, 
   updateDoc 
 };
+export const auth = getAuth(app);
+export const provider = new GoogleAuthProvider();
