@@ -1,7 +1,7 @@
 // src/App.js
 // Tämä on sovelluksen pääkomponentti, joka hallitsee navigointia ja näyttää eri näkymiä.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react"; // Lisätty useCallback
 import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
 import ShoppingList from "./components/ShoppingList";
@@ -21,11 +21,33 @@ function App() {
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [user, setUser] = useState(null);
   const [showLogout, setShowLogout] = useState(false);
-  const [showScrollButtons, setShowScrollButtons] = useState(false); // Uusi tila vieritykselle
+  const [showScrollButtons, setShowScrollButtons] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState(null);
   const [allRecipes, setAllRecipes] = useState([]);
 
+  // Nämä hookit heti alkuun!
+  const showToast = useCallback((message, type) => {
+    setToast({ message, type });
+  }, []);
+
+  const dismissToast = useCallback(() => {
+    setToast(null);
+  }, []);
+
+  const allowedEmails = [
+    "saara0860@gmail.com",
+    "tacerinus@gmail.com",
+    // Lisää sallitut sähköpostit tähän
+  ];
+
+  // Nyt voit käyttää showToastia täällä
+  const handleLogout = async () => {
+    await signOut(auth);
+    showToast("Olet kirjautunut ulos.", "success");
+  };
+
+  // kaikki if (!user) ja muut returnit vasta näiden jälkeen!
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
@@ -42,12 +64,13 @@ function App() {
 
       // Näytä hakupalkki ja "Lisää valitut" -nappi, kun on vieritetty alas vähintään 200px
       // ja aktiivinen välilehti on "Reseptit"
-      setShowScrollButtons(scrollY > 200 && activeTab === "list");
+      // Korjattu fixed-controls näkyvyyslogiikka:
+      setShowScrollButtons(scrollY > 200 && activeTab === "list" && !editingRecipeId);
     };
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeTab]); // activeTab lisätty riippuvuudeksi, jotta tila päivittyy välilehden vaihtuessa
+  }, [activeTab, editingRecipeId]); // Lisätty editingRecipeId riippuvuuksiin
 
   useEffect(() => {
     // Hae kaikki reseptit Firebasesta
@@ -62,25 +85,26 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  const allowedEmails = [
-    "saara0860@gmail.com",
-    "tacerinus@gmail.com",
-    // Lisää sallitut sähköpostit tähän
-  ];
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setToast({ message: "Olet kirjautunut ulos.", type: "success" });
+  const handleSelectedRecipesChange = (newSelected) => {
+    setSelectedRecipes(newSelected);
   };
 
-  const showToast = (message, type) => {
-    setToast({ message, type });
+  const handleEditRecipe = (recipeId) => {
+    setEditingRecipeId(recipeId);
+    setActiveTab("list");
   };
 
-  const dismissToast = () => {
-    setToast(null);
-  };
+  const handleCloseEdit = useCallback(() => {
+    setEditingRecipeId(null);
+    showToast("Resepti päivitetty onnistuneesti!", "success");
+  }, [showToast]);
 
+  const handleRecipeAdded = useCallback(() => {
+    setActiveTab("list");
+    showToast("Resepti lisätty onnistuneesti!", "success");
+  }, [showToast]);
+
+  // Nyt vasta if (!user) ja muut returnit:
   if (!user) {
     return <Login onLogin={setUser} showToast={showToast} />;
   }
@@ -109,25 +133,6 @@ function App() {
       </div>
     );
   }
-
-  const handleSelectedRecipesChange = (newSelected) => {
-    setSelectedRecipes(newSelected);
-  };
-
-  const handleEditRecipe = (recipeId) => {
-    setEditingRecipeId(recipeId);
-    setActiveTab("list");
-  };
-
-  const handleCloseEdit = () => {
-    setEditingRecipeId(null);
-    showToast("Resepti päivitetty onnistuneesti!", "success");
-  };
-
-  const handleRecipeAdded = () => {
-    setActiveTab("list");
-    showToast("Resepti lisätty onnistuneesti!", "success");
-  };
 
   return (
     <div className="App">
@@ -164,45 +169,38 @@ function App() {
           Ostoslista
         </button>
         {/* POISTETTU: Resepti-ideat -välilehti */}
-        {/*
-        <button
-          className={activeTab === "ideas" ? "active" : ""}
-          onClick={() => {
-            setActiveTab("ideas");
-            setEditingRecipeId(null);
-          }}
-        >
-          ✨ Resepti-ideat
-        </button>
-        */}
       </nav>
 
       {/* Kiinnitetyt hakupalkki ja "Lisää valitut" -nappi, näkyvät vieritettäessä */}
-      {activeTab === "list" && !editingRecipeId && (
-        <div className="fixed-controls">
-          <input
-            type="text"
-            placeholder="Etsi reseptejä..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="search-input-fixed"
-            aria-label="Etsi reseptejä"
-          />
-          <button
-            onClick={() => setActiveTab("shopping")}
-            className="add-selected-button-fixed"
-          >
-            Lisää valitut
-          </button>
-        </div>
-      )}
+      {/* Korjattu className fixed-controls elementille */}
+      <div className={`fixed-controls ${showScrollButtons ? "visible" : ""}`}>
+        {activeTab === "list" && !editingRecipeId && (
+          <>
+            <input
+              type="text"
+              placeholder="Etsi reseptejä..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="search-input-fixed"
+              aria-label="Etsi reseptejä"
+            />
+            <button
+              onClick={() => setActiveTab("shopping")}
+              className="add-selected-button-fixed"
+            >
+              Lisää valitut
+            </button>
+          </>
+        )}
+      </div>
+
 
       <main className="App-main">
         {editingRecipeId ? (
           <RecipeEditForm
             recipeId={editingRecipeId}
-            onCloseEdit={handleCloseEdit}
-            showToast={showToast}
+            onCloseEdit={handleCloseEdit} // Käytetään memoizoitua funktiota
+            showToast={showToast} // Käytetään memoizoitua funktiota
           />
         ) : (
           <>
@@ -216,7 +214,7 @@ function App() {
               />
             )}
             {activeTab === "form" && (
-              <RecipeForm onRecipeAdded={handleRecipeAdded} showToast={showToast} />
+              <RecipeForm onRecipeAdded={handleRecipeAdded} showToast={showToast} /> // Käytetään memoizoitua funktiota
             )}
             {activeTab === "shopping" && (
               <ShoppingList
@@ -224,7 +222,6 @@ function App() {
               />
             )}
             {/* POISTETTU: Resepti-ideat -komponentti */}
-            {/* {activeTab === "ideas" && <RecipeIdeaGenerator showToast={showToast} />} */}
           </>
         )}
       </main>

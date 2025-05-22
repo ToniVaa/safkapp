@@ -17,7 +17,7 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        setLoading(true);
+        setLoading(true); // Aseta loading true heti alussa
         const docRef = doc(db, 'recipes', recipeId);
         const docSnap = await getDoc(docRef);
 
@@ -31,19 +31,26 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
           }
         } else {
           showToast('Reseptiä ei löytynyt.', 'error');
-          onCloseEdit();
+          onCloseEdit(); // Sulje muokkaus, jos reseptiä ei löydy
         }
       } catch (err) {
         console.error('Virhe reseptin hakemisessa muokkausta varten:', err);
         showToast('Virhe reseptin lataamisessa.', 'error');
-        onCloseEdit();
+        onCloseEdit(); // Sulje muokkaus virhetilanteessa
       } finally {
-        setLoading(false);
+        setLoading(false); // Aseta loading false lopuksi, riippumatta onnistuiko vai ei
       }
     };
 
-    fetchRecipe();
-  }, [recipeId, onCloseEdit, showToast]);
+    if (recipeId) { // Suorita haku vain, jos recipeId on olemassa
+        fetchRecipe();
+    } else {
+        setLoading(false); // Jos recipeId puuttuu, älä näytä lataustilaa
+    }
+  // Korjattu useEffect-riippuvuudet: onCloseEdit ja showToast poistettu, koska ne on nyt memoizoitu App.js:ssä
+  // ja niiden identiteetti pysyy vakaana, elleivät niiden omat riippuvuudet muutu.
+  // recipeId on ainoa todellinen riippuvuus tälle efektille.
+  }, [recipeId]);
 
   // Käsittelee ainesosakentän muutokset
   const handleIngredientChange = (index, event) => {
@@ -153,7 +160,7 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
         ohjeet: instructions.split('\n').filter(line => line.trim() !== ''),
         muokattu: new Date().toISOString()
       });
-      onCloseEdit();
+      onCloseEdit(); // Kutsu handleCloseEdit App.js:stä
     } catch (err) {
       console.error('Virhe reseptin päivittämisessä:', err);
       showToast("Reseptin päivittäminen epäonnistui. Yritä uudelleen.", "error");
