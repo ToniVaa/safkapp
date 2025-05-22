@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { db, collection, query, onSnapshot, deleteDoc, doc } from '../firebase';
 import ConfirmModal from './ConfirmModal'; // Tuo vahvistusikkuna
 
-const RecipeList = ({ onSelectRecipes, onEditRecipe }) => {
+const RecipeList = ({ onSelectRecipes, onEditRecipe, searchTerm }) => {
   const [recipes, setRecipes] = useState([]);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -75,14 +75,19 @@ const RecipeList = ({ onSelectRecipes, onEditRecipe }) => {
     setRecipeToDelete(null);
   };
 
+  // Suodata reseptit hakusanan perusteella
+  const filteredRecipes = recipes.filter(recipe =>
+    recipe.nimi.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="recipe-list-container">
       <h2>Reseptit</h2>
-      {recipes.length === 0 ? (
+      {filteredRecipes.length === 0 ? (
         <p>Ei reseptejä. Lisää uusia reseptin luo -välilehdeltä.</p>
       ) : (
         <ul className="recipe-items">
-          {recipes.map((recipe) => (
+          {filteredRecipes.map((recipe) => (
             <li key={recipe.id} className="recipe-item">
               <div className="recipe-header">
                 <input

@@ -1,10 +1,7 @@
 // src/App.js
 // Tämä on sovelluksen pääkomponentti, joka hallitsee navigointia ja näyttää eri näkymiä.
-// HUOM: Tämä tiedosto on tarkoitettu käytettäväksi perinteisessä React-projektirakenteessa,
-// jossa muut komponentit ja tyylit ovat omissa tiedostoissaan.
 
 import React, { useState, useEffect } from "react";
-// Tuo kaikki komponentit omista tiedostoistaan
 import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
 import ShoppingList from "./components/ShoppingList";
@@ -13,8 +10,6 @@ import RecipeIdeaGenerator from "./components/RecipeIdeaGenerator";
 import Login from "./components/Login";
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
-
-// Tuo globaalit tyylit
 import "./styles.css";
 
 function App() {
@@ -23,6 +18,7 @@ function App() {
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [user, setUser] = useState(null);
   const [showLogout, setShowLogout] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
@@ -51,7 +47,6 @@ function App() {
     await signOut(auth);
   };
 
-  // Ehdolliset returnit vasta hookkien jälkeen!
   if (!user) {
     return <Login onLogin={setUser} />;
   }
@@ -80,40 +75,32 @@ function App() {
     );
   }
 
-  // Käsittelee valittujen reseptien muutokset RecipeList-komponentista
   const handleSelectedRecipesChange = (recipes) => {
     setSelectedRecipes(recipes);
   };
 
-  // Käsittelee reseptin muokkaustilan avaamisen
   const handleEditRecipe = (recipeId) => {
     setEditingRecipeId(recipeId);
-    setActiveTab("list"); // Pysy "Reseptit"-välilehdellä, mutta näytä muokkauslomake
+    setActiveTab("list");
   };
 
-  // Käsittelee reseptin muokkaustilan sulkemisen
   const handleCloseEdit = () => {
-    setEditingRecipeId(null); // Sulje muokkauslomake
+    setEditingRecipeId(null);
   };
 
-  // Käsittelee uuden reseptin lisäämisen jälkeisen ohjauksen takaisin listaukseen
   const handleRecipeAdded = () => {
     setActiveTab("list");
   };
 
   return (
     <div className="App">
-      {/* CSS-tyylit ladataan styles.css-tiedostosta */}
-
       <header className="App-header">
-        <h1>Resepti- ja Ostoslistasovellus</h1>
+        <h1>SafkApp</h1>
       </header>
 
       <nav className="App-nav">
         <button
-          className={
-            activeTab === "list" && !editingRecipeId ? "active" : ""
-          }
+          className={activeTab === "list" && !editingRecipeId ? "active" : ""}
           onClick={() => {
             setActiveTab("list");
             setEditingRecipeId(null);
@@ -150,23 +137,72 @@ function App() {
         </button>
       </nav>
 
+      {/* Kiinteä "Lisää valitut" -nappi oikeaan yläkulmaan vain reseptit-välilehdellä */}
+      {activeTab === "list" && (
+        <button
+          onClick={() => setActiveTab("shopping")}
+          style={{
+            position: "fixed",
+            top: 24,
+            right: 32,
+            zIndex: 2000,
+            background: "#e44d26",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            padding: "0.7rem 1.5rem",
+            fontSize: "1.1rem",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
+            cursor: "pointer",
+            fontWeight: "bold",
+            letterSpacing: "1px"
+          }}
+        >
+          Lisää valitut
+        </button>
+      )}
+
+      {/* Kiinteä hakupalkki oikeaan yläkulmaan vain reseptit-välilehdellä */}
+      {activeTab === "list" && (
+        <input
+          type="text"
+          placeholder="Etsi reseptejä..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{
+            position: "fixed",
+            top: 24,
+            right: 220,
+            zIndex: 2000,
+            padding: "0.7rem 1.2rem",
+            borderRadius: "8px",
+            border: "1px solid #ccc",
+            fontSize: "1.1rem",
+            width: "220px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            background: "#fff"
+          }}
+        />
+      )}
+
       <main className="App-main">
         {editingRecipeId ? (
-          // Jos reseptiä muokataan, näytä RecipeEditForm
           <RecipeEditForm
             recipeId={editingRecipeId}
             onCloseEdit={handleCloseEdit}
           />
         ) : (
-          // Muussa tapauksessa näytä aktiivinen välilehti
           <>
             {activeTab === "list" && (
               <RecipeList
                 onSelectRecipes={handleSelectedRecipesChange}
                 onEditRecipe={handleEditRecipe}
+                searchTerm={searchTerm}
               />
             )}
-            {activeTab === "form" && <RecipeForm onRecipeAdded={handleRecipeAdded} />}
+            {activeTab === "form" && (
+              <RecipeForm onRecipeAdded={handleRecipeAdded} />
+            )}
             {activeTab === "shopping" && (
               <ShoppingList selectedRecipes={selectedRecipes} />
             )}
