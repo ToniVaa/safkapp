@@ -3,15 +3,18 @@
 // HUOM: Tämä tiedosto on tarkoitettu käytettäväksi perinteisessä React-projektirakenteessa,
 // jossa muut komponentit ja tyylit ovat omissa tiedostoissaan.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import Login from './components/Login';
+import { auth } from './firebase'; // ÄLÄ tuo signOut tästä!
+import { signOut } from "firebase/auth"; // tuo signOut suoraan firebase/auth:sta
+
+
 // Tuo kaikki komponentit omista tiedostoistaan
 import RecipeForm from './components/RecipeForm';
 import RecipeList from './components/RecipeList';
 import ShoppingList from './components/ShoppingList';
 import RecipeEditForm from './components/RecipeEditForm';
 import RecipeIdeaGenerator from './components/RecipeIdeaGenerator';
-import Login from './components/Login';
-import { auth } from './firebase';
 
 
 // Tuo globaalit tyylit
@@ -30,7 +33,7 @@ function App() {
   }, []);
 
   const allowedEmails = [
-    "saara086@gmail.com",
+    "saara0860@gmail.com",
     "tacerinus@gmail.com"
     // Lisää sallitut sähköpostit tähän
   ];
@@ -67,6 +70,10 @@ function App() {
   // Käsittelee uuden reseptin lisäämisen jälkeisen ohjauksen takaisin listaukseen
   const handleRecipeAdded = () => {
     setActiveTab('list');
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   return (
@@ -126,6 +133,27 @@ function App() {
           </>
         )}
       </main>
+
+      {/* Huomaamaton uloskirjautumisnappi alareunaan */}
+      <button
+        onClick={handleLogout}
+        style={{
+          position: "fixed",
+          bottom: 16,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "none",
+          border: "none",
+          color: "#888",
+          fontSize: "0.95rem",
+          opacity: 0.7,
+          cursor: "pointer",
+          textDecoration: "underline",
+          zIndex: 1000
+        }}
+      >
+        Kirjaudu ulos
+      </button>
     </div>
   );
 }
