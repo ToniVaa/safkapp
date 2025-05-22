@@ -3,18 +3,21 @@ import React from "react";
 import { signInWithPopup, signOut } from "firebase/auth";
 import { auth, provider } from "../firebase";
 
-function Login({ onLogin }) {
+function Login({ onLogin, showToast }) {
   const handleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       onLogin(result.user);
+      showToast("Kirjautuminen onnistui!", "success"); // Toast-ilmoitus
     } catch (error) {
-      alert("Kirjautuminen epäonnistui");
+      console.error("Kirjautuminen epäonnistui:", error);
+      showToast("Kirjautuminen epäonnistui. Yritä uudelleen.", "error"); // Toast-ilmoitus
     }
   };
 
   const handleLogout = async () => {
     await signOut(auth);
+    showToast("Olet kirjautunut ulos.", "success"); // Toast-ilmoitus
   };
 
   return (
@@ -68,9 +71,9 @@ function Login({ onLogin }) {
           transform: "translateX(-50%)",
           background: "none",
           border: "none",
-          color: "#bbb", // vaaleampi harmaa
+          color: "#bbb",
           fontSize: "0.95rem",
-          opacity: 0.5, // entistä huomaamattomampi
+          opacity: 0.5,
           cursor: "pointer",
           textDecoration: "underline"
         }}

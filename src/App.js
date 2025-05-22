@@ -6,10 +6,13 @@ import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
 import ShoppingList from "./components/ShoppingList";
 import RecipeEditForm from "./components/RecipeEditForm";
-import RecipeIdeaGenerator from "./components/RecipeIdeaGenerator";
+// import RecipeIdeaGenerator from "./components/RecipeIdeaGenerator"; // POISTETTU: Resepti-ideat ominaisuus
 import Login from "./components/Login";
+import Toast from "./components/Toast"; // Tuo Toast-komponentti
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
+import { db } from "./firebase"; // Tuodaan db Firebase-konfiguraatiosta
+import { collection, query, onSnapshot } from "firebase/firestore"; // Tuodaan tarvittavat funktiot Firestore-kirjastosta
 import "./styles.css";
 
 function App() {
@@ -18,7 +21,10 @@ function App() {
   const [editingRecipeId, setEditingRecipeId] = useState(null);
   const [user, setUser] = useState(null);
   const [showLogout, setShowLogout] = useState(false);
+  const [showScrollButtons, setShowScrollButtons] = useState(false); // Uusi tila vieritykselle
   const [searchTerm, setSearchTerm] = useState("");
+  const [toast, setToast] = useState(null);
+  const [allRecipes, setAllRecipes] = useState([]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
@@ -30,11 +36,30 @@ function App() {
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
-      setShowLogout(scrollY + windowHeight >= docHeight - 40);
+
+      // Näytä uloskirjautumisnappi, kun ollaan melkein sivun alareunassa
+      setShowLogout(scrollY + windowHeight >= docHeight - 100);
+
+      // Näytä hakupalkki ja "Lisää valitut" -nappi, kun on vieritetty alas vähintään 200px
+      // ja aktiivinen välilehti on "Reseptit"
+      setShowScrollButtons(scrollY > 200 && activeTab === "list");
     };
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
+  }, [activeTab]); // activeTab lisätty riippuvuudeksi, jotta tila päivittyy välilehden vaihtuessa
+
+  useEffect(() => {
+    // Hae kaikki reseptit Firebasesta
+    const q = query(collection(db, 'recipes'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const recipesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setAllRecipes(recipesData);
+    });
+    return () => unsubscribe();
   }, []);
 
   const allowedEmails = [
@@ -45,10 +70,19 @@ function App() {
 
   const handleLogout = async () => {
     await signOut(auth);
+    setToast({ message: "Olet kirjautunut ulos.", type: "success" });
+  };
+
+  const showToast = (message, type) => {
+    setToast({ message, type });
+  };
+
+  const dismissToast = () => {
+    setToast(null);
   };
 
   if (!user) {
-    return <Login onLogin={setUser} />;
+    return <Login onLogin={setUser} showToast={showToast} />;
   }
 
   if (user && !allowedEmails.includes(user.email)) {
@@ -71,12 +105,13 @@ function App() {
         >
           Kirjaudu ulos
         </button>
+        {toast && <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
       </div>
     );
   }
 
-  const handleSelectedRecipesChange = (recipes) => {
-    setSelectedRecipes(recipes);
+  const handleSelectedRecipesChange = (newSelected) => {
+    setSelectedRecipes(newSelected);
   };
 
   const handleEditRecipe = (recipeId) => {
@@ -86,10 +121,12 @@ function App() {
 
   const handleCloseEdit = () => {
     setEditingRecipeId(null);
+    showToast("Resepti päivitetty onnistuneesti!", "success");
   };
 
   const handleRecipeAdded = () => {
     setActiveTab("list");
+    showToast("Resepti lisätty onnistuneesti!", "success");
   };
 
   return (
@@ -126,6 +163,8 @@ function App() {
         >
           Ostoslista
         </button>
+        {/* POISTETTU: Resepti-ideat -välilehti */}
+        {/*
         <button
           className={activeTab === "ideas" ? "active" : ""}
           onClick={() => {
@@ -135,54 +174,27 @@ function App() {
         >
           ✨ Resepti-ideat
         </button>
+        */}
       </nav>
 
-      {/* Kiinteä "Lisää valitut" -nappi oikeaan yläkulmaan vain reseptit-välilehdellä */}
-      {activeTab === "list" && (
-        <button
-          onClick={() => setActiveTab("shopping")}
-          style={{
-            position: "fixed",
-            top: 24,
-            right: 32,
-            zIndex: 2000,
-            background: "#e44d26",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            padding: "0.7rem 1.5rem",
-            fontSize: "1.1rem",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
-            cursor: "pointer",
-            fontWeight: "bold",
-            letterSpacing: "1px"
-          }}
-        >
-          Lisää valitut
-        </button>
-      )}
-
-      {/* Kiinteä hakupalkki oikeaan yläkulmaan vain reseptit-välilehdellä */}
-      {activeTab === "list" && (
-        <input
-          type="text"
-          placeholder="Etsi reseptejä..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          style={{
-            position: "fixed",
-            top: 24,
-            right: 220,
-            zIndex: 2000,
-            padding: "0.7rem 1.2rem",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
-            fontSize: "1.1rem",
-            width: "220px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-            background: "#fff"
-          }}
-        />
+      {/* Kiinnitetyt hakupalkki ja "Lisää valitut" -nappi, näkyvät vieritettäessä */}
+      {activeTab === "list" && !editingRecipeId && (
+        <div className="fixed-controls">
+          <input
+            type="text"
+            placeholder="Etsi reseptejä..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="search-input-fixed"
+            aria-label="Etsi reseptejä"
+          />
+          <button
+            onClick={() => setActiveTab("shopping")}
+            className="add-selected-button-fixed"
+          >
+            Lisää valitut
+          </button>
+        </div>
       )}
 
       <main className="App-main">
@@ -190,28 +202,33 @@ function App() {
           <RecipeEditForm
             recipeId={editingRecipeId}
             onCloseEdit={handleCloseEdit}
+            showToast={showToast}
           />
         ) : (
           <>
             {activeTab === "list" && (
               <RecipeList
                 onSelectRecipes={handleSelectedRecipesChange}
+                selectedRecipes={selectedRecipes}
                 onEditRecipe={handleEditRecipe}
                 searchTerm={searchTerm}
+                showToast={showToast}
               />
             )}
             {activeTab === "form" && (
-              <RecipeForm onRecipeAdded={handleRecipeAdded} />
+              <RecipeForm onRecipeAdded={handleRecipeAdded} showToast={showToast} />
             )}
             {activeTab === "shopping" && (
-              <ShoppingList selectedRecipes={selectedRecipes} />
+              <ShoppingList
+                selectedRecipes={allRecipes.filter(r => selectedRecipes.includes(r.id))}
+              />
             )}
-            {activeTab === "ideas" && <RecipeIdeaGenerator />}
+            {/* POISTETTU: Resepti-ideat -komponentti */}
+            {/* {activeTab === "ideas" && <RecipeIdeaGenerator showToast={showToast} />} */}
           </>
         )}
       </main>
 
-      {/* Huomaamaton uloskirjautumisnappi näkyy vain kun ollaan alalaidassa */}
       {showLogout && (
         <button
           onClick={handleLogout}
@@ -233,6 +250,7 @@ function App() {
           Kirjaudu ulos
         </button>
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
     </div>
   );
 }

@@ -9,28 +9,28 @@ const ShoppingList = ({ selectedRecipes }) => {
     const combinedIngredients = {};
 
     selectedRecipes.forEach(recipe => {
-      if (recipe.ainesosat) {
-        recipe.ainesosat.forEach(ingredient => {
-          // Normalisoi nimi ja yksikkö avainta varten (esim. "kermaa-dl")
-          const key = `${ingredient.name.toLowerCase().trim()}-${ingredient.unit.toLowerCase().trim()}`;
-          
-          if (combinedIngredients[key]) {
-            // Jos ainesosa yksikköineen on jo listalla, lisää määrää
-            combinedIngredients[key].amount += ingredient.amount;
+      if (recipe.ainesosat && Array.isArray(recipe.ainesosat)) {
+        recipe.ainesosat.forEach(ing => {
+          if (!ing.name) return;
+          // Yhdistetään nimen ja yksikön perusteella
+          const key = `${ing.name.trim().toLowerCase()}|${ing.unit || ''}`;
+          if (!combinedIngredients[key]) {
+            combinedIngredients[key] = {
+              name: ing.name,
+              amount: parseFloat(ing.amount) || 0,
+              unit: ing.unit || ''
+            };
           } else {
-            // Muuten lisää uutena
-            combinedIngredients[key] = { ...ingredient };
+            combinedIngredients[key].amount += parseFloat(ing.amount) || 0;
           }
         });
       }
     });
 
-    // Muunna yhdistetty objekti takaisin järjestetyksi listaksi tulostusta varten
-    const shoppingList = Object.values(combinedIngredients).sort((a, b) =>
-      a.name.localeCompare(b.name)
+    // Palauta järjestetty lista
+    return Object.values(combinedIngredients).sort((a, b) =>
+      a.name.localeCompare(b.name, 'fi')
     );
-
-    return shoppingList;
   };
 
   const shoppingItems = compileShoppingList();
@@ -45,7 +45,7 @@ const ShoppingList = ({ selectedRecipes }) => {
           <p>Ostoslista valituista resepteistä:</p>
           <ul className="shopping-items">
             {shoppingItems.length === 0 ? (
-                <p>Valituissa resepteissä ei ole ainesosia.</p>
+              <p>Valituissa resepteissä ei ole ainesosia.</p>
             ) : (
               shoppingItems.map((item, index) => (
                 <li key={index}>
