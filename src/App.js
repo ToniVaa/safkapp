@@ -11,8 +11,8 @@ import Login from "./components/Login";
 import Toast from "./components/Toast"; // Tuo Toast-komponentti
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
-import { db } from "./firebase"; // Tuodaan db Firebase-konfiguraatiosta
-import { collection, query, onSnapshot } from "firebase/firestore"; // Tuodaan tarvittavat funktiot Firestore-kirjastosta
+import { collection, query, onSnapshot, getDocs } from "firebase/firestore"; // Tuodaan tarvittavat funktiot Firestore-kirjastosta
+import { db } from "./firebase"; // varmista että db on alustettu
 import "./styles.css";
 
 function App() {
@@ -25,6 +25,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState(null);
   const [allRecipes, setAllRecipes] = useState([]);
+  const [allowedEmails, setAllowedEmails] = useState([]);
 
   // Nämä hookit heti alkuun!
   const showToast = useCallback((message, type) => {
@@ -34,12 +35,6 @@ function App() {
   const dismissToast = useCallback(() => {
     setToast(null);
   }, []);
-
-  const allowedEmails = [
-    "saara0860@gmail.com",
-    "tacerinus@gmail.com",
-    // Lisää sallitut sähköpostit tähän
-  ];
 
   // Nyt voit käyttää showToastia täällä
   const handleLogout = async () => {
@@ -83,6 +78,14 @@ function App() {
       setAllRecipes(recipesData);
     });
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const fetchAllowedEmails = async () => {
+      const snapshot = await getDocs(collection(db, "allowedEmails"));
+      setAllowedEmails(snapshot.docs.map(doc => doc.data().email));
+    };
+    fetchAllowedEmails();
   }, []);
 
   const handleSelectedRecipesChange = (newSelected) => {
