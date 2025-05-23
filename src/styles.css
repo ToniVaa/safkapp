@@ -362,26 +362,41 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
-  font-size: 1.5rem; /* Koko kuvakkeille */
-  transition: color 0.2s ease;
+  padding: 0; /* Voit säätää paddingia tarvittaessa SVG:n ympärille */
+  /* Font-size ei enää suoraan vaikuta SVG:hen, ellet käytä em-yksiköitä SVG:ssä */
+  transition: opacity 0.2s ease; /* Muutettu colorista opacityyn, jos SVG:n väriä ei vaihdeta hoverilla */
   line-height: 1; /* Estää ylimääräistä tilaa */
 }
 
-.delete-icon-button {
-  color: #dc3545; /* Punainen väri */
+.action-buttons-container button svg {
+  width: 1.5rem;  /* Määritä haluamasi leveys SVG:lle */
+  height: 1.5rem; /* Määritä haluamasi korkeus SVG:lle */
+  display: block; /* Varmistaa oikean layoutin */
 }
 
-.delete-icon-button:hover {
-  color: #c82333;
+.edit-icon-button svg {
+  fill: #007bff; /* Sininen väri - varmista, että SVG:si käyttää currentColor tai että tämä fill toimii */
 }
 
-.edit-icon-button {
-  color: #007bff; /* Sininen väri */
+.edit-icon-button:hover svg {
+  fill: #0056b3; /* Tummempi sininen hoverissa */
 }
-
+/* TAI jos haluat vain opacity-muutoksen hoverilla, kuten transitionissa: */
 .edit-icon-button:hover {
-  color: #0056b3;
+  opacity: 0.7;
+}
+
+
+.delete-icon-button svg {
+  fill: #dc3545; /* Punainen väri - varmista, että SVG:si käyttää currentColor tai että tämä fill toimii */
+}
+
+.delete-icon-button:hover svg {
+  fill: #c82333; /* Tummempi punainen hoverissa */
+}
+/* TAI jos haluat vain opacity-muutoksen hoverilla: */
+.delete-icon-button:hover {
+  opacity: 0.7;
 }
 
 

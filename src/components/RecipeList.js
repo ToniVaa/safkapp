@@ -5,6 +5,12 @@ import React, { useState, useEffect } from 'react';
 import { db, collection, query, onSnapshot, deleteDoc, doc } from '../firebase';
 import ConfirmModal from './ConfirmModal';
 
+// Oletetaan, että SVG-tiedostosi ovat src/assets/icons/ -kansiossa
+// Jos polku on eri, muokkaa import-lauseita vastaavasti.
+// Jos assets-kansiota tai icons-alikansiota ei ole, luo ne.
+import { ReactComponent as EditIcon } from '../assets/icons/edit-icon.svg';
+import { ReactComponent as DeleteIcon } from '../assets/icons/delete-icon.svg';
+
 const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes = [] }) => {
   const [recipes, setRecipes] = useState([]);
   const [expandedId, setExpandedId] = useState(null); // Tila laajennetulle reseptille
@@ -93,27 +99,23 @@ const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes
                   {expandedId === recipe.id ? "−" : "+"}
                 </button>
                 <span style={{ fontWeight: "bold", flex: 1, marginLeft: 8 }}>{recipe.nimi}</span>
-                {/* Poisto- ja muokkausnapit on siirretty alla olevaan recipe-details-lohkoon */}
               </div>
               {expandedId === recipe.id && (
                 <div className="recipe-details">
                   <div className="action-buttons-container" style={{ justifyContent: 'flex-end', marginBottom: '10px' }}>
-                    {/* HUOM: action-buttons-container luokkaa voi käyttää, jos se on määritelty CSS:ssä tai poista se ja käytä vain inline-tyylejä */}
                     <button
-                      className="edit-icon-button" // CSS-luokka napille
+                      className="edit-icon-button"
                       aria-label="Muokkaa"
                       onClick={() => onEditRecipe(recipe.id)}
-                      // Poistettu inline-tyylit, jos ne tulevat CSS-luokasta
                     >
-                      ✏️
+                      <EditIcon /> {/* SVG-komponentti käytössä */}
                     </button>
                     <button
-                      className="delete-icon-button" // CSS-luokka napille
+                      className="delete-icon-button"
                       aria-label="Poista"
                       onClick={() => handleDeleteClick(recipe)}
-                      // Poistettu inline-tyylit, jos ne tulevat CSS-luokasta
                     >
-                      ❌
+                      <DeleteIcon /> {/* SVG-komponentti käytössä */}
                     </button>
                   </div>
                   <h3>Ainesosat:</h3>
