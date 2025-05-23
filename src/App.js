@@ -55,7 +55,7 @@ function App() {
       const windowHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
       setShowLogout(scrollY + windowHeight >= docHeight - 100);
-      setShowScrollButtons(scrollY > 200 && activeTab === "list" && !editingRecipeId);
+      setShowScrollButtons(scrollY > 400 && activeTab === "list" && !editingRecipeId);
     };
     window.addEventListener("scroll", handleScroll);
     handleScroll();
