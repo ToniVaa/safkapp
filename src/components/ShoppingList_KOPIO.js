@@ -3,34 +3,6 @@
 
 import React from 'react';
 
-const unitSynonyms = {
-  // Tilavuus
-  "ml": "ml", "millilitra": "ml", "millilitraa": "ml",
-  "cl": "cl", "senttilitra": "cl", "senttilitraa": "cl",
-  "dl": "dl", "desilitra": "dl", "desilitraa": "dl",
-  "l": "l", "litra": "l", "litraa": "l",
-  // Paino
-  "g": "g", "gramma": "g", "grammaa": "g",
-  "kg": "kg", "kilo": "kg", "kiloa": "kg", "kilogramma": "kg", "kilogrammaa": "kg",
-  // Kappalemäärä
-  "kpl": "kpl", "kappaletta": "kpl", "kappale": "kpl", // Lisätty "kappale"
-  "rs": "rs", "rasia": "rs", "rasiaa": "rs",
-  "tl": "tl", "teelusikka": "tl", "teelusikkaa": "tl",
-  "rkl": "rkl", "ruokalusikka": "rkl", "ruokalusikkaa": "rkl",
-  "ripaus": "ripaus",
-  "pullo": "plo",
-  // Muut
-  "pkt": "pkt", "paketti": "pkt", "pakettia": "pkt",
-  "prk": "prk", "purkki": "prk", "purkkia": "prk",
-  "":" ", // Käsitellään tyhjä yksikkö yhtenäisesti välilyöntinä (tai voit valita tyhjän merkkijonon '')
-           // Tämä on tärkeää, jotta avain pysyy yhtenäisenä, jos yksikköä ei ole määritelty.
-};
-
-function normalizeUnit(unit) {
-  const lowerUnit = (unit || '').trim().toLowerCase();
-  return unitSynonyms[lowerUnit] || lowerUnit; // Palauttaa normalisoidun tai alkuperäisen (pienellä) jos ei löydy
-}
-
 const ShoppingList = ({ selectedRecipes }) => {
   // Koostaa ostoslistan valituista resepteistä
   const compileShoppingList = () => {
@@ -40,15 +12,13 @@ const ShoppingList = ({ selectedRecipes }) => {
       if (recipe.ainesosat && Array.isArray(recipe.ainesosat)) {
         recipe.ainesosat.forEach(ing => {
           if (!ing.name) return;
-
-          const normalizedUnit = normalizeUnit(ing.unit); // Normalisoi yksikkö
-          const key = `${ing.name.trim().toLowerCase()}|${normalizedUnit}`; // Käytä normalisoitua yksikköä avaimessa
-
+          // Yhdistetään nimen ja yksikön perusteella
+          const key = `${ing.name.trim().toLowerCase()}|${ing.unit || ''}`;
           if (!combinedIngredients[key]) {
             combinedIngredients[key] = {
               name: ing.name,
               amount: parseFloat(ing.amount) || 0,
-              unit: normalizedUnit // Tallenna normalisoitu yksikkö
+              unit: ing.unit || ''
             };
           } else {
             combinedIngredients[key].amount += parseFloat(ing.amount) || 0;
