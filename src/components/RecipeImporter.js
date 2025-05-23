@@ -143,7 +143,7 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
             console.log(`   Yleinen määräosa tunnistettu: amountStringPart="${amountStringPart}", ParsedAmount=${amount}, currentLine nyt="${currentLine}"`);
         } else {
              // Viimeinen yritys: numero ja yksikkö kiinni toisissaan
-            const numberUnitNoSpaceRegex = /^(\d+)([a-zA-ZäöåÄÖÅμ]+)(.*)/i;
+            const numberUnitNoSpaceRegex = /^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[,.]\d*)|\d+)([a-zA-ZäöåÄÖÅμ]+)(.*)/i;
             const numberUnitMatch = currentLine.match(numberUnitNoSpaceRegex);
             if (numberUnitMatch) {
                 const potentialAmountStr = numberUnitMatch[1];
