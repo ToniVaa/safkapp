@@ -1,32 +1,72 @@
 /* src/components/ShoppingList.css */
 .shopping-list-container {
     max-width: 600px;
-    margin: 20px auto;
+    margin: 20px auto; /* Keskittää koko ostoslista-lohkon sivulla */
     padding: 20px;
     background-color: #f9f9f9;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: left; /* Varmistaa, että tämän containerin oletustasaus on vasen */
 }
 
 .shopping-list-container h2 {
-    text-align: center;
+    text-align: center; /* Otsikko voi olla keskitetty */
     color: #333;
     margin-bottom: 20px;
 }
 
-.shopping-list-container p {
+.shopping-list-container p.shopping-list-description {
+    text-align: left; /* Ostoslistan kuvaus vasemmalle */
+    color: #666;
+    margin-bottom: 15px;
+}
+
+/* Muut kappaleet (esim. "Valitse reseptejä...") voivat pysyä keskitettyinä */
+.shopping-list-container p:not(.shopping-list-description) {
     text-align: center;
     color: #666;
     margin-bottom: 15px;
 }
 
 .shopping-items {
-    list-style: disc; /* tai square, circle */
-    padding-left: 25px; /* sisennys luettelomerkille */
+    list-style: none; /* Poistaa oletuslistamerkit */
+    padding-left: 0;  /* Poistaa oletussisennyksen */
+    margin-top: 10px; /* Tilaa kuvaustekstin ja listan väliin */
+    /* text-align: left; periytyy .shopping-list-containerilta, mutta voi olla tässäkin varmuuden vuoksi */
 }
 
 .shopping-items li {
-    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
     font-size: 1.1rem;
     color: #444;
+    /* text-align: left; periytyy, ja flex-itemien lapset (checkbox, span) järjestäytyvät flex-sääntöjen mukaan */
+}
+
+.shopping-items li::before { /* Varmistetaan, ettei mikään selain yritä lisätä ::before-merkkiä */
+    content: none !important;
+    display: none !important;
+}
+
+.shopping-items li::marker { /* Varmistetaan, ettei mikään selain yritä lisätä ::marker-merkkiä */
+    content: none !important;
+    display: none !important;
+}
+
+.shopping-items li.checked .shopping-item-name {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.shopping-item-checkbox {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    flex-shrink: 0; /* Estää checkboxia kutistumasta */
+}
+
+.shopping-item-name {
+    flex-grow: 1; /* Antaa tekstin viedä loput tilasta */
 }
