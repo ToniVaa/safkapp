@@ -273,14 +273,14 @@ body {
   text-align: center;
 }
 
-/* RecipeList.css */
+/* RecipeList styles */
 .recipe-list-container {
   max-width: 800px;
   margin: 20px auto;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0;
+  background-color: #fff;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .recipe-list-container h2 {
@@ -296,107 +296,138 @@ body {
 
 .recipe-item {
   background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 15px;
-  padding: 2.4rem 0; /* lisää myös pystysuuntainen tila */
-  min-height: 8rem; /* tuplaa korkeuden */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  min-height: calc(4.8rem - 2rem);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease-in-out;
 }
+
+.recipe-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
 
 .recipe-header {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
-  flex-wrap: wrap; /* Salli rivinvaihto */
+  margin-bottom: 0.75rem;
+  width: 100%;
 }
 
-.recipe-header input[type="checkbox"] {
-  margin-right: 10px;
+.recipe-checkbox {
+  margin-right: 0.75rem;
   width: 20px;
   height: 20px;
   cursor: pointer;
-  flex-shrink: 0; /* Estä kutistumasta */
+  flex-shrink: 0;
 }
 
-.recipe-header label {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #333;
+.recipe-name {
+  font-weight: 600;
+  font-size: 1.6rem; /* Pidetty fonttikoko ennallaan tässä */
+  color: #2c3e50;
   flex-grow: 1;
+  text-align: left;
+  margin-right: 0.75rem;
+  line-height: 1.3;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: #777;
+  font-size: 2.4rem; /* Kasvatettu +- merkin fonttikokoa */
+  font-weight: 300;
   cursor: pointer;
-  margin-right: 10px; /* Tilaa poistonapille */
+  padding: 0 0.5rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  transition: color 0.2s ease;
+}
+.expand-btn:hover {
+  color: #333;
+  background: none;
+}
+
+.recipe-details {
+  margin-top: 0.75rem;
+  text-align: left;
+  padding-left: 5px;
+  border-top: 1px solid #eee;
+  padding-top: 0.75rem;
 }
 
 .recipe-details h3 {
-  font-size: 1.1rem;
-  color: #555;
-  margin-top: 10px;
-  margin-bottom: 5px;
+  font-size: 1.05rem;
+  color: #4a5568;
+  margin-top: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
 }
 
 .recipe-details ul,
 .recipe-details ol {
   list-style-position: inside;
   padding-left: 0;
-  margin-bottom: 10px;
+  margin-bottom: 0.75rem;
 }
 
 .recipe-details ul li,
 .recipe-details ol li {
-  margin-bottom: 5px;
-  color: #666;
-  line-height: 1.4;
+  margin-bottom: 0.3rem;
+  color: #555e6b;
+  line-height: 1.5;
 }
 
-/* Delete, Edit buttons in RecipeList/RecipeEditForm */
 .action-buttons-container {
   display: flex;
-  gap: 8px;
-  margin-left: auto; /* Push to the right */
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
   flex-shrink: 0;
-  align-items: center; /* Keskittää pystysuunnassa */
+  align-items: center;
 }
 
 .action-buttons-container button {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0; /* Voit säätää paddingia tarvittaessa SVG:n ympärille */
-  /* Font-size ei enää suoraan vaikuta SVG:hen, ellet käytä em-yksiköitä SVG:ssä */
-  transition: opacity 0.2s ease; /* Muutettu colorista opacityyn, jos SVG:n väriä ei vaihdeta hoverilla */
-  line-height: 1; /* Estää ylimääräistä tilaa */
+  padding: 5px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+.action-buttons-container button:hover {
+  opacity: 0.8;
+  background-color: #f0f3f5;
+  transform: scale(1.1);
 }
 
 .action-buttons-container button svg {
-  width: 1.5rem;  /* Määritä haluamasi leveys SVG:lle */
-  height: 1.5rem; /* Määritä haluamasi korkeus SVG:lle */
-  display: block; /* Varmistaa oikean layoutin */
+  width: 1.1rem;
+  height: 1.1rem;
+  display: block;
 }
 
 .edit-icon-button svg {
-  fill: #007bff; /* Sininen väri - varmista, että SVG:si käyttää currentColor tai että tämä fill toimii */
+  fill: #007bff;
 }
-
-.edit-icon-button:hover svg {
-  fill: #0056b3; /* Tummempi sininen hoverissa */
-}
-/* TAI jos haluat vain opacity-muutoksen hoverilla, kuten transitionissa: */
-.edit-icon-button:hover {
-  opacity: 0.7;
-}
-
 
 .delete-icon-button svg {
-  fill: #dc3545; /* Punainen väri - varmista, että SVG:si käyttää currentColor tai että tämä fill toimii */
-}
-
-.delete-icon-button:hover svg {
-  fill: #c82333; /* Tummempi punainen hoverissa */
-}
-/* TAI jos haluat vain opacity-muutoksen hoverilla: */
-.delete-icon-button:hover {
-  opacity: 0.7;
+  fill: #e44d26;
 }
 
 
@@ -511,15 +542,15 @@ body {
     margin: 5px 0;
     width: 100%;
   }
-  .fixed-controls { /* Säädetty myös pienemmille näytöille */
+  .fixed-controls {
     flex-direction: column;
     padding: 10px;
     right: 0;
     left: 0;
     width: auto;
     max-width: unset;
-    top: 0; /* Aseta ylös, jotta tilaa riittää */
-    gap: 5px; /* Pienempi rako mobiilissa */
+    top: 0;
+    gap: 5px;
   }
   .search-input-fixed,
   .add-selected-button-fixed {
@@ -540,6 +571,20 @@ body {
   }
   .modal-buttons {
     flex-direction: column;
+  }
+
+  .recipe-name {
+    font-size: 1.3rem; /* Pidetty ennallaan, koska pyyntö koski vain +-nappia */
+  }
+
+  .expand-btn {
+    font-size: 2rem; /* Säädetty mobiilille sopivammaksi (suurempi kuin edellinen 1.8rem) */
+    padding: 0 0.3rem;
+  }
+
+  .action-buttons-container button svg {
+    width: 1rem;
+    height: 1rem;
   }
 }
 
@@ -582,6 +627,16 @@ body {
     box-shadow: 0 2px 8px rgba(0,0,0,0.10);
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
+  }
+
+  .recipe-item {
+    padding: 0.75rem;
+  }
+  .recipe-name {
+    font-size: 1.2rem; /* Pidetty ennallaan, koska pyyntö koski vain +-nappia */
+  }
+  .expand-btn {
+    font-size: 1.8rem; /* Säädetty mobiilille (suurempi kuin edellinen 1.6rem) */
   }
 }
 
@@ -664,23 +719,9 @@ body {
   }
 }
 
-.expand-btn {
-  font-weight: bold;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: #f2f2f2;
-  color: #007bff;
-  margin-right: 8px;
-  transition: background 0.2s;
-}
-.expand-btn:hover {
-  background: #e0e0e0;
-}
-
 .app-logo {
-  height: 120px;      /* Säädä korkeus yläpalkkiin sopivaksi */
-  max-width: 90vw;   /* Skaalaa tarvittaessa */
+  height: 120px;
+  max-width: 90vw;
   display: block;
   margin: 0 auto;
 }
