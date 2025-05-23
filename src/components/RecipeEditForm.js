@@ -50,8 +50,8 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
   // Korjattu useEffect-riippuvuudet: onCloseEdit ja showToast poistettu, koska ne on nyt memoizoitu App.js:ssä
   // ja niiden identiteetti pysyy vakaana, elleivät niiden omat riippuvuudet muutu.
   // recipeId on ainoa todellinen riippuvuus tälle efektille.
-  }, [recipeId]);
-
+  }, [recipeId, onCloseEdit, showToast]);
+  
   // Käsittelee ainesosakentän muutokset
   const handleIngredientChange = (index, event) => {
     const newIngredients = [...ingredients];
