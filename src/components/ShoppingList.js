@@ -1,7 +1,7 @@
 // src/components/ShoppingList.js
 // Tämä komponentti koostaa ja näyttää ostoslistan valituista resepteistä.
 
-import React, { useState, useEffect, useMemo } from 'react'; // Lisätty useMemo
+import React, { useState, useEffect, useMemo } from 'react';
 
 const unitSynonyms = {
   // Tilavuus
@@ -31,11 +31,9 @@ function normalizeUnit(unit) {
 }
 
 const conversionFactors = {
-  'ml': { to: 'dl', threshold: 100, factor: 100 }, // Esim. 100ml -> 1dl
-  'dl': { to: 'l', threshold: 10, factor: 10 },   // Esim. 10dl -> 1l
-  'g': { to: 'kg', threshold: 1000, factor: 1000 }, // Esim. 1000g -> 1kg
-  // Lisää tarvittaessa muita muunnoksia, esim. tl -> dl tai rkl -> dl
-  // 'tl': { to: 'ml', threshold: (esim. 20 -> jos 20tl on ~1dl), factor: (montako tl on ml) }
+  'ml': { to: 'dl', threshold: 100, factor: 100 },
+  'dl': { to: 'l', threshold: 10, factor: 10 },
+  'g': { to: 'kg', threshold: 1000, factor: 1000 },
 };
 
 
@@ -49,47 +47,53 @@ const ShoppingList = ({ selectedRecipes }) => {
         recipe.ainesosat.forEach(ing => {
           if (!ing.name) return;
           
-          let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0; // Käsittele pilkku ja varmista numero
-          let unit = normalizeUnit(ing.unit); // Normalisoi yksikkö ensin
+          let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0;
+          let unit = normalizeUnit(ing.unit); 
 
-          // Avain perustuu nimeen ja normalisoituun perusyksikköön (jos muunnos on olemassa ja tehdään)
-          // Tai vain nimeen ja normalisoituun yksikköön, jos muunnosta ei tehdä heti
-          const key = `${ing.name.trim().toLowerCase()}|${unit}`;
+          // Generoidaan alustava id ainesosalle (voi muuttua yksikkömuunnoksen myötä)
+          // Tämä id käytetään väliaikaisesti yhdistämiseen ennen lopullista muunnosta.
+          const initialId = `${ing.name.trim().toLowerCase()}-${unit}`;
 
-          if (!combinedIngredients[key]) {
-            combinedIngredients[key] = {
+          if (!combinedIngredients[initialId]) {
+            combinedIngredients[initialId] = {
               name: ing.name.trim(),
               amount: amount,
               unit: unit,
+              originalId: initialId // Säilytetään alkuperäinen id-muoto myöhempää käyttöä varten checkedItemsissa
             };
           } else {
-            combinedIngredients[key].amount += amount;
+            combinedIngredients[initialId].amount += amount;
           }
         });
       }
     });
 
-    // Muunna yksiköt vasta yhdistämisen jälkeen
     const convertedIngredients = Object.values(combinedIngredients).map(item => {
       const conversion = conversionFactors[item.unit];
+      let currentId = item.originalId; // Käytä alkuperäistä id:tä, ellei yksikkö muutu
+
       if (conversion && item.amount >= conversion.threshold) {
-        // Pyöristetään kahden desimaalin tarkkuuteen, jos tarpeen
         const newAmount = parseFloat((item.amount / conversion.factor).toFixed(2));
+        currentId = `${item.name.trim().toLowerCase()}-${conversion.to}`; // Päivitä id, jos yksikkö muuttuu
         return {
-          ...item,
+          name: item.name, // Säilytä alkuperäinen nimen muotoilu
           amount: newAmount,
           unit: conversion.to,
+          id: currentId
         };
       }
-      // Jos määrä on desimaaliluku, mutta ei ylitä muunnosrajaa, varmista että se on järkevästi muotoiltu
-      // Esimerkiksi jos halutaan aina max 2 desimaalia
-      if (item.amount % 1 !== 0) {
-        return {
-          ...item,
-          amount: parseFloat(item.amount.toFixed(2))
-        }
+      
+      let finalAmount = item.amount;
+      if (item.amount % 1 !== 0) { // Jos on desimaaliluku
+         finalAmount = parseFloat(item.amount.toFixed(2));
       }
-      return item;
+      
+      return {
+        name: item.name,
+        amount: finalAmount,
+        unit: item.unit,
+        id: currentId // Käytä alkuperäistä tai päivitettyä id:tä
+      };
     }).sort((a, b) =>
       a.name.localeCompare(b.name, 'fi', { sensitivity: 'base' })
     );
@@ -98,20 +102,20 @@ const ShoppingList = ({ selectedRecipes }) => {
   }, [selectedRecipes]);
 
   useEffect(() => {
-    const newCheckedState = {};
-    shoppingItems.forEach((item, index) => {
-      // Yritetään säilyttää checkboxin tila, jos ainesosa (nimi+yksikkö+määrä) on täysin sama
-      // Tämä on yksinkertaistus, parempi avain voisi olla tarpeen jos järjestys muuttuu usein.
-      // Tässä käytetään indeksiä, mikä nollaa valinnat listan muuttuessa.
-      newCheckedState[index] = false; 
+    setCheckedItems(prevCheckedItems => {
+      const newCheckedState = {};
+      shoppingItems.forEach(item => {
+        const key = item.id; // Käytä ainesosan yksilöivää id:tä avaimena
+        newCheckedState[key] = prevCheckedItems[key] || false; 
+      });
+      return newCheckedState;
     });
-    setCheckedItems(newCheckedState);
   }, [shoppingItems]); 
 
-  const handleCheckboxChange = (index) => {
+  const handleCheckboxChange = (itemKey) => {
     setCheckedItems(prevCheckedItems => {
       const newCheckedItems = { ...prevCheckedItems };
-      newCheckedItems[index] = !newCheckedItems[index];
+      newCheckedItems[itemKey] = !newCheckedItems[itemKey];
       return newCheckedItems;
     });
   };
@@ -128,19 +132,21 @@ const ShoppingList = ({ selectedRecipes }) => {
             <p>Valituissa resepteissä ei ole ainesosia.</p>
           ) : (
             <ul className="shopping-items">
-              {shoppingItems.map((item, index) => (
-                <li key={`${item.name}-${item.unit}-${item.amount}-${index}`} className={checkedItems[index] ? 'checked' : ''}> {/* Parempi avain */}
-                  <input
-                    type="checkbox"
-                    className="shopping-item-checkbox"
-                    checked={!!checkedItems[index]} 
-                    onChange={() => handleCheckboxChange(index)}
-                    aria-label={`Merkitse ${item.name} käsitellyksi`}
-                  />
-                  {/* Varmistetaan, että desimaaliluvut näytetään oikein (esim. pilkulla) */}
-                  <span className="shopping-item-name">{item.name}: {String(item.amount).replace('.', ',')} {item.unit}</span>
-                </li>
-              ))}
+              {shoppingItems.map((item) => {
+                const itemKey = item.id; 
+                return (
+                  <li key={itemKey} className={checkedItems[itemKey] ? 'checked' : ''}>
+                    <input
+                      type="checkbox"
+                      className="shopping-item-checkbox"
+                      checked={!!checkedItems[itemKey]} 
+                      onChange={() => handleCheckboxChange(itemKey)}
+                      aria-label={`Merkitse ${item.name} käsitellyksi`}
+                    />
+                    <span className="shopping-item-name">{item.name}: {String(item.amount).replace('.', ',')} {item.unit}</span>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>
