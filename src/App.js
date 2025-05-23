@@ -1,19 +1,17 @@
 // src/App.js
-// Tämä on sovelluksen pääkomponentti, joka hallitsee navigointia ja näyttää eri näkymiä.
-
-import React, { useState, useEffect, useCallback } from "react"; // Lisätty useCallback
+import React, { useState, useEffect, useCallback } from "react";
 import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
 import ShoppingList from "./components/ShoppingList";
 import RecipeEditForm from "./components/RecipeEditForm";
-// import RecipeIdeaGenerator from "./components/RecipeIdeaGenerator"; // POISTETTU: Resepti-ideat ominaisuus
+import RecipeImporter from "./components/RecipeImporter"; // UUSI: Tuo RecipeImporter
 import Login from "./components/Login";
-import Toast from "./components/Toast"; // Tuo Toast-komponentti
+import Toast from "./components/Toast";
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
-import { collection, query, onSnapshot, getDocs } from "firebase/firestore"; // Tuodaan tarvittavat funktiot Firestore-kirjastosta
-import { db } from "./firebase"; // varmista että db on alustettu
-import "./styles.css";
+import { collection, query, onSnapshot, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
+import "./styles.css"; // Olemassa oleva globaali tyylitiedosto
 
 function App() {
   const [selectedRecipes, setSelectedRecipes] = useState([]);
@@ -26,9 +24,9 @@ function App() {
   const [toast, setToast] = useState(null);
   const [allRecipes, setAllRecipes] = useState([]);
   const [allowedEmails, setAllowedEmails] = useState([]);
-  const [isLoadingAllowedEmails, setIsLoadingAllowedEmails] = useState(true); // Uusi tilamuuttuja lataustilalle
+  const [isLoadingAllowedEmails, setIsLoadingAllowedEmails] = useState(true);
+  const [parsedRecipeForForm, setParsedRecipeForForm] = useState(null); // UUSI: Tila jäsennetylle reseptille
 
-  // Nämä hookit heti alkuun!
   const showToast = useCallback((message, type) => {
     setToast({ message, type });
   }, []);
@@ -37,13 +35,15 @@ function App() {
     setToast(null);
   }, []);
 
-  // Nyt voit käyttää showToastia täällä
   const handleLogout = async () => {
-    await signOut(auth);
-    showToast("Olet kirjautunut ulos.", "success");
+    try {
+      await signOut(auth);
+      showToast("Olet kirjautunut ulos.", "success");
+    } catch (error) {
+      showToast("Uloskirjautuminen epäonnistui.", "error");
+    }
   };
 
-  // kaikki if (!user) ja muut returnit vasta näiden jälkeen!
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
@@ -54,22 +54,15 @@ function App() {
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
-
-      // Näytä uloskirjautumisnappi, kun ollaan melkein sivun alareunassa
       setShowLogout(scrollY + windowHeight >= docHeight - 100);
-
-      // Näytä hakupalkki ja "Lisää valitut" -nappi, kun on vieritetty alas vähintään 200px
-      // ja aktiivinen välilehti on "Reseptit"
-      // Korjattu fixed-controls näkyvyyslogiikka:
       setShowScrollButtons(scrollY > 200 && activeTab === "list" && !editingRecipeId);
     };
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeTab, editingRecipeId]); // Lisätty editingRecipeId riippuvuuksiin
+  }, [activeTab, editingRecipeId]);
 
   useEffect(() => {
-    // Hae kaikki reseptit Firebasesta
     const q = query(collection(db, 'recipes'));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const recipesData = querySnapshot.docs.map(doc => ({
@@ -83,20 +76,19 @@ function App() {
 
   useEffect(() => {
     const fetchAllowedEmails = async () => {
-      setIsLoadingAllowedEmails(true); // Aloita lataus
+      setIsLoadingAllowedEmails(true);
       try {
         const snapshot = await getDocs(collection(db, "allowedEmails"));
-        // Muuta sähköpostit pieniksi kirjaimiksi heti haun yhteydessä
         setAllowedEmails(snapshot.docs.map(doc => doc.data().email.toLowerCase()));
       } catch (error) {
         console.error("Error fetching allowed emails:", error);
         showToast("Virhe sallittujen sähköpostien haussa.", "error");
       } finally {
-        setIsLoadingAllowedEmails(false); // Lopeta lataus
+        setIsLoadingAllowedEmails(false);
       }
     };
     fetchAllowedEmails();
-  }, [showToast]); // showToast lisätty riippuvuuksiin, jos se voi muuttua
+  }, [showToast]);
 
   const handleSelectedRecipesChange = (newSelected) => {
     setSelectedRecipes(newSelected);
@@ -109,30 +101,39 @@ function App() {
 
   const handleCloseEdit = useCallback(() => {
     setEditingRecipeId(null);
+    setActiveTab("list");
     showToast("Resepti päivitetty onnistuneesti!", "success");
   }, [showToast]);
 
   const handleRecipeAdded = useCallback(() => {
     setActiveTab("list");
+    setParsedRecipeForForm(null); // Nollaa esitäytetty data, kun resepti on lisätty
     showToast("Resepti lisätty onnistuneesti!", "success");
   }, [showToast]);
 
-  // Nyt vasta if (!user) ja muut returnit:
+  const handleRecipeParsed = useCallback((parsedData) => {
+    setParsedRecipeForForm(parsedData);
+    setActiveTab("form");
+    setEditingRecipeId(null);
+  }, []);
+
+  const handleClearParsedData = useCallback(() => {
+    setParsedRecipeForForm(null);
+  }, []);
+
+
   if (!user) {
     return <Login onLogin={setUser} showToast={showToast} />;
   }
 
-  // Odota, että allowedEmails on ladattu
   if (isLoadingAllowedEmails) {
     return (
       <div style={{ textAlign: "center", marginTop: "3rem" }}>
         <p>Tarkistetaan käyttöoikeuksia...</p>
-        {/* Voit halutessasi lisätä tähän visuaalisen latausindikaattorin */}
       </div>
     );
   }
 
-  // Muuta myös käyttäjän sähköposti pieniksi kirjaimiksi vertailua varten
   if (user && !allowedEmails.includes(user.email.toLowerCase())) {
     return (
       <div style={{ textAlign: "center", marginTop: "3rem" }}>
@@ -162,7 +163,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <img
-          src="/safkapp_logo.png"
+          src="/safkapp_logo.png" // Varmista, että logo on public-kansiossa
           alt="SafkApp"
           className="app-logo"
         />
@@ -178,11 +179,23 @@ function App() {
         >
           Reseptit
         </button>
+        {/* UUSI: Tuo resepti -välilehti */}
+        <button
+          className={activeTab === "import" ? "active" : ""}
+          onClick={() => {
+            setActiveTab("import");
+            setEditingRecipeId(null);
+          }}
+        >
+          Tuo resepti
+        </button>
         <button
           className={activeTab === "form" ? "active" : ""}
           onClick={() => {
             setActiveTab("form");
             setEditingRecipeId(null);
+            // Jos haluat, että "Luo resepti" -nappi tyhjentää aina tuodun datan:
+            // handleClearParsedData();
           }}
         >
           Luo resepti
@@ -196,11 +209,8 @@ function App() {
         >
           Ostoslista
         </button>
-        {/* POISTETTU: Resepti-ideat -välilehti */}
       </nav>
 
-      {/* Kiinnitetyt hakupalkki ja "Lisää valitut" -nappi, näkyvät vieritettäessä */}
-      {/* Korjattu className fixed-controls elementille */}
       <div className={`fixed-controls ${showScrollButtons ? "visible" : ""}`}>
         {activeTab === "list" && !editingRecipeId && (
           <>
@@ -222,13 +232,12 @@ function App() {
         )}
       </div>
 
-
       <main className="App-main">
         {editingRecipeId ? (
           <RecipeEditForm
             recipeId={editingRecipeId}
-            onCloseEdit={handleCloseEdit} // Käytetään memoizoitua funktiota
-            showToast={showToast} // Käytetään memoizoitua funktiota
+            onCloseEdit={handleCloseEdit}
+            showToast={showToast}
           />
         ) : (
           <>
@@ -241,15 +250,22 @@ function App() {
                 showToast={showToast}
               />
             )}
+            {activeTab === "import" && (
+              <RecipeImporter onRecipeParsed={handleRecipeParsed} showToast={showToast} />
+            )}
             {activeTab === "form" && (
-              <RecipeForm onRecipeAdded={handleRecipeAdded} showToast={showToast} /> // Käytetään memoizoitua funktiota
+              <RecipeForm
+                onRecipeAdded={handleRecipeAdded}
+                showToast={showToast}
+                initialData={parsedRecipeForForm}
+                onClearInitialData={handleClearParsedData}
+              />
             )}
             {activeTab === "shopping" && (
               <ShoppingList
                 selectedRecipes={allRecipes.filter(r => selectedRecipes.includes(r.id))}
               />
             )}
-            {/* POISTETTU: Resepti-ideat -komponentti */}
           </>
         )}
       </main>
