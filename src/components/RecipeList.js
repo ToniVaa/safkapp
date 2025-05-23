@@ -7,7 +7,7 @@ import ConfirmModal from './ConfirmModal';
 
 const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes = [] }) => {
   const [recipes, setRecipes] = useState([]);
-  const [expandedId, setExpandedId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null); // Tila laajennetulle reseptille
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState(null);
 
@@ -93,37 +93,29 @@ const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes
                   {expandedId === recipe.id ? "−" : "+"}
                 </button>
                 <span style={{ fontWeight: "bold", flex: 1, marginLeft: 8 }}>{recipe.nimi}</span>
-                <button
-                  className="edit-icon-button"
-                  aria-label="Muokkaa"
-                  onClick={() => onEditRecipe(recipe.id)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: "1.2rem",
-                    cursor: "pointer",
-                    marginRight: 8
-                  }}
-                >
-                  ✏️
-                </button>
-                <button
-                  className="delete-icon-button"
-                  aria-label="Poista"
-                  onClick={() => handleDeleteClick(recipe)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: "1.2rem",
-                    cursor: "pointer",
-                    color: "#dc3545"
-                  }}
-                >
-                  ❌
-                </button>
+                {/* Poisto- ja muokkausnapit on siirretty alla olevaan recipe-details-lohkoon */}
               </div>
               {expandedId === recipe.id && (
                 <div className="recipe-details">
+                  <div className="action-buttons-container" style={{ justifyContent: 'flex-end', marginBottom: '10px' }}>
+                    {/* HUOM: action-buttons-container luokkaa voi käyttää, jos se on määritelty CSS:ssä tai poista se ja käytä vain inline-tyylejä */}
+                    <button
+                      className="edit-icon-button" // CSS-luokka napille
+                      aria-label="Muokkaa"
+                      onClick={() => onEditRecipe(recipe.id)}
+                      // Poistettu inline-tyylit, jos ne tulevat CSS-luokasta
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="delete-icon-button" // CSS-luokka napille
+                      aria-label="Poista"
+                      onClick={() => handleDeleteClick(recipe)}
+                      // Poistettu inline-tyylit, jos ne tulevat CSS-luokasta
+                    >
+                      ❌
+                    </button>
+                  </div>
                   <h3>Ainesosat:</h3>
                   <ul>
                     {recipe.ainesosat && recipe.ainesosat.map((ing, idx) => (
