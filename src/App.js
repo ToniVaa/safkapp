@@ -26,6 +26,7 @@ function App() {
   const [toast, setToast] = useState(null);
   const [allRecipes, setAllRecipes] = useState([]);
   const [allowedEmails, setAllowedEmails] = useState([]);
+  const [isLoadingAllowedEmails, setIsLoadingAllowedEmails] = useState(true); // Uusi tilamuuttuja lataustilalle
 
   // Nämä hookit heti alkuun!
   const showToast = useCallback((message, type) => {
@@ -82,11 +83,20 @@ function App() {
 
   useEffect(() => {
     const fetchAllowedEmails = async () => {
-      const snapshot = await getDocs(collection(db, "allowedEmails"));
-      setAllowedEmails(snapshot.docs.map(doc => doc.data().email));
+      setIsLoadingAllowedEmails(true); // Aloita lataus
+      try {
+        const snapshot = await getDocs(collection(db, "allowedEmails"));
+        // Muuta sähköpostit pieniksi kirjaimiksi heti haun yhteydessä
+        setAllowedEmails(snapshot.docs.map(doc => doc.data().email.toLowerCase()));
+      } catch (error) {
+        console.error("Error fetching allowed emails:", error);
+        showToast("Virhe sallittujen sähköpostien haussa.", "error");
+      } finally {
+        setIsLoadingAllowedEmails(false); // Lopeta lataus
+      }
     };
     fetchAllowedEmails();
-  }, []);
+  }, [showToast]); // showToast lisätty riippuvuuksiin, jos se voi muuttua
 
   const handleSelectedRecipesChange = (newSelected) => {
     setSelectedRecipes(newSelected);
@@ -112,7 +122,18 @@ function App() {
     return <Login onLogin={setUser} showToast={showToast} />;
   }
 
-  if (user && !allowedEmails.includes(user.email)) {
+  // Odota, että allowedEmails on ladattu
+  if (isLoadingAllowedEmails) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "3rem" }}>
+        <p>Tarkistetaan käyttöoikeuksia...</p>
+        {/* Voit halutessasi lisätä tähän visuaalisen latausindikaattorin */}
+      </div>
+    );
+  }
+
+  // Muuta myös käyttäjän sähköposti pieniksi kirjaimiksi vertailua varten
+  if (user && !allowedEmails.includes(user.email.toLowerCase())) {
     return (
       <div style={{ textAlign: "center", marginTop: "3rem" }}>
         <h2>Pääsy evätty</h2>
