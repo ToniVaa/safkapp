@@ -21,12 +21,12 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       const initialIngredients = initialData.ainesosat && Array.isArray(initialData.ainesosat) && initialData.ainesosat.length > 0
         ? initialData.ainesosat.map(ing => ({
             name: ing.name || '',
-            amount: ing.amount || '', 
+            amount: ing.amount === '' || ing.amount === null || ing.amount === undefined ? '' : String(ing.amount), // Varmista merkkijono tai tyhjä
             unit: ing.unit || ''
           }))
         : [{ name: '', amount: '', unit: '' }];
       setIngredients(initialIngredients);
-      setInstructions(initialData.ohjeet || ''); 
+      setInstructions(initialData.ohjeet || '');
       setErrors({});
 
       if (nameInputRef.current) {
@@ -36,12 +36,8 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       if (onClearInitialData) {
         onClearInitialData();
       }
-    } else {
-      if (initialData === null && name === '' && ingredients.length === 1 && ingredients[0].name === '' && ingredients[0].amount === '' && ingredients[0].unit === '' && instructions === '') {
-        // Lomake on jo tyhjä
-      }
     }
-  }, [initialData, onClearInitialData, name, ingredients, instructions]);
+  }, [initialData, onClearInitialData]);
 
 
   const handleIngredientChange = (index, event) => {
@@ -55,6 +51,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     if (errors[`${errorKeyBase}-amount`] && event.target.name === 'amount') {
       setErrors(prev => ({ ...prev, [`${errorKeyBase}-amount`]: undefined }));
     }
+    // Yksikön virhettä ei enää tarvitse erikseen poistaa tässä, koska se on valinnainen
   };
 
   const addIngredientField = () => {
@@ -63,16 +60,21 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
 
   const removeIngredientField = (index) => {
     const newIngredients = ingredients.filter((_, i) => i !== index);
-    if (newIngredients.length === 0) {
-      setIngredients([{ name: '', amount: '', unit: '' }]);
+    // Jos poistetaan viimeinen rivi ja se oli tyhjä, älä lisää uutta tyhjää automaattisesti.
+    // RecipeForm antaa lisätä uuden tarvittaessa.
+    // Jos rivejä on jäljellä, käytä niitä. Jos ei, jätä tyhjäksi (tai RecipeForm voi päättää lisätä tyhjän myöhemmin jos tarpeen)
+    if (newIngredients.length === 0 && ingredients.length === 1) {
+        setIngredients([{ name: '', amount: '', unit: '' }]); // Säilytä vähintään yksi tyhjä rivi, jos kaikki poistetaan
     } else {
-      setIngredients(newIngredients);
+        setIngredients(newIngredients);
     }
+
     const errorKeyBase = `ingredient-${index}`;
     setErrors(prev => {
       const updatedErrors = { ...prev };
       delete updatedErrors[`${errorKeyBase}-name`];
       delete updatedErrors[`${errorKeyBase}-amount`];
+      // Yksikön virhettä ei tarvitse erikseen käsitellä tässä, koska se on valinnainen
       return updatedErrors;
     });
   };
@@ -89,13 +91,15 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     ingredients.forEach((ing, index) => {
       const nameTrimmed = ing.name.trim();
       const amountStrTrimmed = String(ing.amount).trim();
-      const unitTrimmed = ing.unit.trim();
+      // Yksikköä ei enää validoida pakollisena, joten unitTrimmed ei ole osa ehtoa alla
 
-      if (nameTrimmed || amountStrTrimmed || unitTrimmed) {
-        if (nameTrimmed === '') { 
-          newErrors[`ingredient-${index}-name`] = 'Nimi on pakollinen, jos rivi on täytetty.';
+      // Jos jokin kentistä (nimi, määrä, yksikkö) on täytetty, nimi on pakollinen.
+      if (nameTrimmed || amountStrTrimmed || ing.unit.trim()) {
+        if (nameTrimmed === '') {
+          newErrors[`ingredient-${index}-name`] = 'Ainesosan nimi on pakollinen, jos rivillä on muita tietoja.';
           isValid = false;
         }
+        // Määrän validointi (jos annettu)
         if (amountStrTrimmed !== '') {
           const parsedAmount = Number(String(ing.amount).replace(',', '.'));
           if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -103,14 +107,22 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
             isValid = false;
           }
         }
+        // Yksikkö on nyt valinnainen, joten sille ei ole erillistä virhettä tässä, ellei haluta erityistä logiikkaa
       }
     });
     
+    // Varmistetaan, että vähintään yksi ainesosa on lisätty, jos lomaketta yritetään lähettää aktiivisilla ainesosilla
     const activeIngredients = ingredients.filter(ing => ing.name.trim() || String(ing.amount).trim() || ing.unit.trim());
-    if (activeIngredients.length === 0) {
+    if (activeIngredients.length === 0 && ingredients.length > 0 && ingredients.some(ing => ing.name || ing.amount || ing.unit)) {
+        // Tämä ehto on hieman monimutkainen, tarkoituksena on estää tyhjän reseptin lähetys,
+        // mutta sallia lomakkeen alustus tyhjällä rivillä.
+        // Jos kaikki rivit ovat täysin tyhjiä, ei pitäisi olla virhettä, mutta submit-nappi voi olla disabloitu.
+    } else if (activeIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
+        // Jos nimi tai ohjeet on annettu, mutta ei yhtään aktiivista ainesosaa
         newErrors.ingredients = 'Lisää vähintään yksi ainesosa.';
         isValid = false;
     }
+
 
     setErrors(newErrors);
     return isValid;
@@ -125,27 +137,29 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     }
 
     const processedIngredients = ingredients
-      .filter(ing => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== '')
+      .filter(ing => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== '') // Suodata pois täysin tyhjät rivit
       .map(ing => {
         const amountStr = String(ing.amount).trim().replace(',', '.');
         let finalAmount;
         if (amountStr === '') {
-          finalAmount = ''; 
+          finalAmount = ''; // Jätä tyhjäksi, jos määrää ei ole annettu
         } else {
           const parsed = parseFloat(amountStr);
-          finalAmount = isNaN(parsed) ? '' : parsed; 
+          finalAmount = isNaN(parsed) ? '' : parsed; // Tallenna numeerisena tai tyhjänä
         }
         
         return {
           name: ing.name.trim(),
           amount: finalAmount,
-          unit: ing.unit.trim(),
+          unit: ing.unit.trim(), // Yksikkö voi olla tyhjä
         };
-      });
-    
-    if (processedIngredients.length === 0 && ingredients.some(ing => ing.name || ing.amount || ing.unit)) {
-         showToast("Lisää vähintään yksi kelvollinen ainesosa.", "error");
-         setErrors(prev => ({...prev, ingredients: "Lisää vähintään yksi kelvollinen ainesosa."}));
+      })
+      .filter(ing => ing.name.trim() !== ''); // Varmista vielä, että ainesosalla on nimi
+
+    // Jos ainesosia ei ole yhtään (tai yhtään nimellistä ainesosaa), mutta lomake on muuten täytetty, näytä virhe.
+    if (processedIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
+         showToast("Lisää vähintään yksi kelvollinen ainesosa (nimi vaaditaan).", "error");
+         setErrors(prev => ({...prev, ingredients: "Lisää vähintään yksi ainesosa, jolla on nimi."}));
          return;
     }
 
@@ -171,15 +185,18 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     }
   };
 
-  const isFormSubmittable = 
+  const isFormSubmittable =
     name.trim() !== '' &&
-    ingredients.some(ing => ing.name.trim() !== '') && 
-    ingredients.every(ing => { 
+    // Vähintään yksi ainesosa, jolla on nimi
+    ingredients.some(ing => ing.name.trim() !== '') &&
+    // Kaikki annetut määrät ovat validia positiivisia lukuja
+    ingredients.every(ing => {
         const amountStr = String(ing.amount).trim();
-        if (amountStr === '') return true; 
+        if (amountStr === '') return true; // Tyhjä määrä on ok, jos nimi on annettu
         const parsedAmount = Number(amountStr.replace(',', '.'));
         return !isNaN(parsedAmount) && parsedAmount > 0;
     });
+
 
   return (
     <div className="recipe-form-container">
@@ -213,7 +230,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
               className={errors[`ingredient-${index}-name`] ? 'input-error' : ''}
             />
             <input
-              type="text"
+              type="text" // Muutettu number -> text, jotta tyhjä arvo on helpompi käsitellä ja sallii pilkun
               name="amount"
               placeholder="Määrä (valinnainen)"
               value={ingredient.amount}
@@ -224,12 +241,13 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
             <input
               type="text"
               name="unit"
-              placeholder="Yksikkö (valinnainen)"
+              placeholder="Yksikkö (esim. 'dl')" // Placeholder päivitetty
               value={ingredient.unit}
               onChange={(e) => handleIngredientChange(index, e)}
               aria-label={`Ainesosan ${index + 1} yksikkö`}
+              // Ei enää 'required' eikä error-luokkaa yksikölle tässä, koska se on valinnainen
             />
-            {ingredients.length > 0 && (
+            {ingredients.length > 0 && ( // Näytä poista-nappi aina jos rivejä on (tai > 1 jos halutaan aina väh. 1 rivi)
               <button type="button" onClick={() => removeIngredientField(index)} className="remove-ingredient-button">
                 Poista
               </button>

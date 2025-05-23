@@ -17,74 +17,81 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        setLoading(true); // Aseta loading true heti alussa
+        setLoading(true);
         const docRef = doc(db, 'recipes', recipeId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
           setName(data.nimi || '');
-          setIngredients(data.ainesosat && data.ainesosat.length > 0 ? data.ainesosat : [{ name: '', amount: '', unit: '' }]);
+          setIngredients(data.ainesosat && data.ainesosat.length > 0 ? 
+            data.ainesosat.map(ing => ({
+              name: ing.name || '',
+              amount: ing.amount === '' || ing.amount === null || ing.amount === undefined ? '' : String(ing.amount), // Varmista merkkijono tai tyhjä
+              unit: ing.unit || '' 
+            }))
+            : [{ name: '', amount: '', unit: '' }]);
           setInstructions(data.ohjeet ? data.ohjeet.join('\n') : '');
           if (nameInputRef.current) {
             nameInputRef.current.focus();
           }
         } else {
           showToast('Reseptiä ei löytynyt.', 'error');
-          onCloseEdit(); // Sulje muokkaus, jos reseptiä ei löydy
+          onCloseEdit(); 
         }
       } catch (err) {
         console.error('Virhe reseptin hakemisessa muokkausta varten:', err);
         showToast('Virhe reseptin lataamisessa.', 'error');
-        onCloseEdit(); // Sulje muokkaus virhetilanteessa
+        onCloseEdit();
       } finally {
-        setLoading(false); // Aseta loading false lopuksi, riippumatta onnistuiko vai ei
+        setLoading(false);
       }
     };
 
-    if (recipeId) { // Suorita haku vain, jos recipeId on olemassa
+    if (recipeId) {
         fetchRecipe();
     } else {
-        setLoading(false); // Jos recipeId puuttuu, älä näytä lataustilaa
+        setLoading(false);
     }
-  // Korjattu useEffect-riippuvuudet: onCloseEdit ja showToast poistettu, koska ne on nyt memoizoitu App.js:ssä
-  // ja niiden identiteetti pysyy vakaana, elleivät niiden omat riippuvuudet muutu.
-  // recipeId on ainoa todellinen riippuvuus tälle efektille.
   }, [recipeId, onCloseEdit, showToast]);
   
-  // Käsittelee ainesosakentän muutokset
   const handleIngredientChange = (index, event) => {
     const newIngredients = [...ingredients];
     newIngredients[index][event.target.name] = event.target.value;
     setIngredients(newIngredients);
-    if (errors[`ingredient-${index}-${event.target.name}`]) {
+
+    // Poista virhe kyseisestä kentästä, jos se on korjattu
+    const errorKeyBase = `ingredient-${index}`;
+    if (errors[`${errorKeyBase}-${event.target.name}`]) {
       setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[`ingredient-${index}-${event.target.name}`];
-        return newErrors;
+        const newErrorsLocal = { ...prev };
+        delete newErrorsLocal[`${errorKeyBase}-${event.target.name}`];
+        return newErrorsLocal;
       });
     }
   };
 
-  // Lisää uuden tyhjän ainesosakentän
   const addIngredientField = () => {
     setIngredients([...ingredients, { name: '', amount: '', unit: '' }]);
   };
 
-  // Poistaa ainesosakentän
   const removeIngredientField = (index) => {
     const newIngredients = ingredients.filter((_, i) => i !== index);
-    setIngredients(newIngredients);
+    if (newIngredients.length === 0 && ingredients.length === 1) {
+        setIngredients([{ name: '', amount: '', unit: '' }]);
+    } else {
+        setIngredients(newIngredients);
+    }
+    // Poista myös mahdolliset virheet poistetulta riviltä
     setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[`ingredient-${index}-name`];
-      delete newErrors[`ingredient-${index}-amount`];
-      delete newErrors[`ingredient-${index}-unit`];
-      return newErrors;
+      const newErrorsLocal = { ...prev };
+      delete newErrorsLocal[`ingredient-${index}-name`];
+      delete newErrorsLocal[`ingredient-${index}-amount`];
+      // delete newErrorsLocal[`ingredient-${index}-unit`]; // Yksikkö ei ole enää pakollinen
+      return newErrorsLocal;
     });
   };
 
-  // Validointifunktio
   const validateForm = () => {
     let isValid = true;
     const newErrors = {};
@@ -94,38 +101,41 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
       isValid = false;
     }
 
+    // Ohjeet eivät ole enää pakollisia tässä, jos niin halutaan.
+    // Jos ohjeet halutaan pakollisiksi, alla oleva ehto voidaan palauttaa:
+    /*
     if (instructions.trim() === '') {
       newErrors.instructions = 'Ohjeet ovat pakolliset.';
       isValid = false;
     }
+    */
 
-    const filteredIngredients = ingredients.filter(
-      (ing) => ing.name.trim() !== '' || ing.amount.toString().trim() !== '' || ing.unit.trim() !== ''
+    // Ainesosien validointi
+    const activeIngredients = ingredients.filter(
+      (ing) => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== ''
     );
 
-    if (filteredIngredients.length === 0) {
+    if (activeIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
       newErrors.ingredients = 'Lisää vähintään yksi ainesosa.';
       isValid = false;
     } else {
-      filteredIngredients.forEach((ing, index) => {
+      activeIngredients.forEach((ing, index) => {
+        // Etsi alkuperäinen indeksi, jos ingredients-taulukko on suodatettu välissä (ei tässä tapauksessa)
+        const originalIndex = ingredients.findIndex(originalIng => originalIng === ing);
+
         if (ing.name.trim() === '') {
-          newErrors[`ingredient-${index}-name`] = 'Nimi on pakollinen.';
+          newErrors[`ingredient-${originalIndex}-name`] = 'Ainesosan nimi on pakollinen, jos rivillä on muita tietoja.';
           isValid = false;
         }
-        if (ing.amount.toString().trim() === '') {
-          newErrors[`ingredient-${index}-amount`] = 'Määrä on pakollinen.';
-          isValid = false;
-        } else {
-          const parsedAmount = Number(ing.amount);
+        const amountStr = String(ing.amount).trim();
+        if (amountStr !== '') { // Vain jos määrä on annettu
+          const parsedAmount = Number(amountStr.replace(',', '.'));
           if (isNaN(parsedAmount) || parsedAmount <= 0) {
-            newErrors[`ingredient-${index}-amount`] = 'Määrän on oltava positiivinen luku.';
+            newErrors[`ingredient-${originalIndex}-amount`] = 'Jos määrä on annettu, sen on oltava positiivinen luku.';
             isValid = false;
           }
         }
-        if (ing.unit.trim() === '') {
-          newErrors[`ingredient-${index}-unit`] = 'Yksikkö on pakollinen.';
-          isValid = false;
-        }
+        // Yksikkö on valinnainen, joten ei validointia sille tässä
       });
     }
 
@@ -133,7 +143,6 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
     return isValid;
   };
 
-  // Käsittelee lomakkeen lähetyksen (reseptin päivittämisen)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -142,38 +151,66 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
       return;
     }
 
-    const parsedIngredients = ingredients.filter(
-      (ing) => ing.name.trim() !== '' && ing.amount.toString().trim() !== '' && ing.unit.trim() !== ''
-    ).map(ing => {
-      const parsedAmount = Number(ing.amount);
-      return {
-        ...ing,
-        amount: parsedAmount
-      };
-    });
+    const parsedIngredients = ingredients
+      .filter(ing => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== '')
+      .map(ing => {
+        const amountStr = String(ing.amount).trim().replace(',', '.');
+        let finalAmount;
+        if (amountStr === '') {
+          finalAmount = ''; // Jätä tyhjäksi, jos ei annettu
+        } else {
+          const parsed = parseFloat(amountStr);
+          finalAmount = isNaN(parsed) ? '' : parsed;
+        }
+        return {
+          name: ing.name.trim(),
+          amount: finalAmount,
+          unit: ing.unit.trim(),
+        };
+      })
+      .filter(ing => ing.name.trim() !== ''); // Varmista, että ainesosalla on nimi
+
+    if (parsedIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
+      showToast("Lisää vähintään yksi kelvollinen ainesosa (nimi vaaditaan).", "error");
+      setErrors(prev => ({...prev, ingredients: "Lisää vähintään yksi ainesosa, jolla on nimi."}));
+      return;
+    }
+
 
     try {
       const recipeRef = doc(db, 'recipes', recipeId);
       await updateDoc(recipeRef, {
-        nimi: name,
+        nimi: name.trim(),
         ainesosat: parsedIngredients,
-        ohjeet: instructions.split('\n').filter(line => line.trim() !== ''),
+        ohjeet: instructions.trim() ? instructions.trim().split('\n').filter(line => line.trim() !== '') : [],
         muokattu: new Date().toISOString()
       });
-      onCloseEdit(); // Kutsu handleCloseEdit App.js:stä
+      onCloseEdit();
     } catch (err) {
       console.error('Virhe reseptin päivittämisessä:', err);
       showToast("Reseptin päivittäminen epäonnistui. Yritä uudelleen.", "error");
     }
   };
 
-  const isFormValid = name.trim() !== '' && instructions.trim() !== '' && ingredients.some(ing => ing.name.trim() !== '' && ing.amount.toString().trim() !== '' && ing.unit.trim() !== '' && !isNaN(Number(ing.amount)) && Number(ing.amount) > 0);
+  // isFormValid-ehtoa on yksinkertaistettu vastaamaan validateForm-logiikkaa
+  // Pääasiassa tarkistetaan, että nimi on annettu ja jos ainesosia on, ne ovat järkeviä.
+  const isFormValid =
+    name.trim() !== '' &&
+    ingredients.every(ing => {
+        const amountStr = String(ing.amount).trim();
+        if (amountStr === '') return true; // Tyhjä määrä on ok
+        const parsedAmount = Number(amountStr.replace(',', '.'));
+        return !isNaN(parsedAmount) && parsedAmount > 0;
+    }) &&
+    // Jos ainesosia on yritetty lisätä (ei vain tyhjä aloitusrivi), vähintään yhdellä on oltava nimi
+    (ingredients.length === 1 && ingredients[0].name === '' && ingredients[0].amount === '' && ingredients[0].unit === '' ? true : ingredients.some(ing => ing.name.trim() !== ''));
+
 
   if (loading) return <p className="recipe-form-container skeleton-text">Ladataan reseptiä...</p>;
 
   return (
     <div className="recipe-form-container">
-      <h2>Muokkaa reseptiä: {name}</h2>
+      <h2>Muokkaa reseptiä: {name || 'Nimetön'}</h2>
       <form onSubmit={handleSubmit} className="recipe-form">
         <div className="form-group">
           <label htmlFor="edit-name">Reseptin nimi:</label>
@@ -199,39 +236,39 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
               placeholder="Ainesosa (esim. 'kermaa')"
               value={ingredient.name}
               onChange={(e) => handleIngredientChange(index, e)}
-              required
+              // Nimi on pakollinen vain, jos rivillä on muita tietoja (tarkistetaan validateFormissa)
               aria-label={`Ainesosan ${index + 1} nimi`}
               className={errors[`ingredient-${index}-name`] ? 'input-error' : ''}
             />
             <input
-              type="number"
+              type="text" // Muutettu number -> text
               name="amount"
-              placeholder="Määrä (esim. '2')"
+              placeholder="Määrä (valinnainen)"
               value={ingredient.amount}
               onChange={(e) => handleIngredientChange(index, e)}
-              step="any"
-              required
+              // step="any" // Ei tarvita type="text" kanssa
               aria-label={`Ainesosan ${index + 1} määrä`}
               className={errors[`ingredient-${index}-amount`] ? 'input-error' : ''}
             />
             <input
               type="text"
               name="unit"
-              placeholder="Yksikkö (esim. 'dl')"
+              placeholder="Yksikkö (valinnainen)" // Placeholder päivitetty
               value={ingredient.unit}
               onChange={(e) => handleIngredientChange(index, e)}
-              required
+              // Ei enää 'required'
               aria-label={`Ainesosan ${index + 1} yksikkö`}
-              className={errors[`ingredient-${index}-unit`] ? 'input-error' : ''}
+              // className={errors[`ingredient-${index}-unit`] ? 'input-error' : ''} // Virhettä ei enää aseteta yksikölle
             />
-            {ingredients.length > 1 && (
+            {ingredients.length > 0 && (
               <button type="button" onClick={() => removeIngredientField(index)} className="remove-ingredient-button">
-                Poista ainesosa
+                Poista
               </button>
             )}
             {errors[`ingredient-${index}-name`] && <p className="validation-error-message" style={{ flexBasis: '100%' }}>{errors[`ingredient-${index}-name`]}</p>}
             {errors[`ingredient-${index}-amount`] && <p className="validation-error-message" style={{ flexBasis: '100%' }}>{errors[`ingredient-${index}-amount`]}</p>}
-            {errors[`ingredient-${index}-unit`] && <p className="validation-error-message" style={{ flexBasis: '100%' }}>{errors[`ingredient-${index}-unit`]}</p>}
+            {/* {errors[`ingredient-${index}-unit`] && <p className="validation-error-message" style={{ flexBasis: '100%' }}>{errors[`ingredient-${index}-unit`]}</p>} */}
+
           </div>
         ))}
         {errors.ingredients && <p className="validation-error-message">{errors.ingredients}</p>}
@@ -240,13 +277,13 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
         </button>
 
         <div className="form-group">
-          <label htmlFor="edit-instructions">Ohjeet:</label>
+          <label htmlFor="edit-instructions">Ohjeet (valinnainen):</label>
           <textarea
             id="edit-instructions"
             value={instructions}
             onChange={(e) => { setInstructions(e.target.value); if (errors.instructions) setErrors(prev => { const newErrors = { ...prev }; delete newErrors.instructions; return newErrors; }); }}
             rows="5"
-            required
+            // Ei enää 'required', jos halutaan valinnaiseksi
             aria-label="Reseptin ohjeet"
             className={errors.instructions ? 'input-error' : ''}
           ></textarea>

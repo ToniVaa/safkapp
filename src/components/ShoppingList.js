@@ -22,12 +22,14 @@ const unitSynonyms = {
   // Muut
   "pkt": "pkt", "paketti": "pkt", "pakettia": "pkt",
   "prk": "prk", "purkki": "prk", "purkkia": "prk",
-  "":" ",
+  "":" ", // Normalisoidaan välilyönniksi, josta sitten tyhjäksi merkkijonoksi alla
 };
 
 function normalizeUnit(unit) {
   const lowerUnit = (unit || '').trim().toLowerCase();
-  return unitSynonyms[lowerUnit] || lowerUnit;
+  const normalized = unitSynonyms[lowerUnit] || lowerUnit;
+  // Palauta tyhjä merkkijono, jos yksikköä ei ole tai se on merkityksetön (vain välilyönti)
+  return (normalized === " ") ? "" : normalized;
 }
 
 const conversionFactors = {
@@ -47,65 +49,98 @@ const ShoppingList = ({ selectedRecipes }) => {
         recipe.ainesosat.forEach(ing => {
           if (!ing.name) return;
           
+          const nameKey = ing.name.trim().toLowerCase();
           let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0;
-          let unit = normalizeUnit(ing.unit); 
+          // Jos amount on NaN (esim. tyhjä syöte), käytä 0:aa yhteenlaskussa,
+          // mutta huomioidaan, että alkuperäinen määrä saattoi olla "ei määritelty"
+          let originalAmountSpecified = ing.amount !== '' && !isNaN(parseFloat(String(ing.amount).replace(',', '.')));
+          if (isNaN(amount)) {
+            amount = 0;
+          }
+          
+          let currentUnit = normalizeUnit(ing.unit);
 
-          // Generoidaan alustava id ainesosalle (voi muuttua yksikkömuunnoksen myötä)
-          // Tämä id käytetään väliaikaisesti yhdistämiseen ennen lopullista muunnosta.
-          const initialId = `${ing.name.trim().toLowerCase()}-${unit}`;
-
-          if (!combinedIngredients[initialId]) {
-            combinedIngredients[initialId] = {
+          if (!combinedIngredients[nameKey]) {
+            combinedIngredients[nameKey] = {
               name: ing.name.trim(),
               amount: amount,
-              unit: unit,
-              originalId: initialId // Säilytetään alkuperäinen id-muoto myöhempää käyttöä varten checkedItemsissa
+              unit: currentUnit,
+              // Seuraa, onko tälle ainesosalle KOSKAAN määritelty ei-tyhjää yksikköä
+              hasEverHadExplicitUnit: currentUnit !== "",
+              // Seuraa, onko tälle ainesosalle KOSKAAN määritelty numeerista määrää
+              hasEverHadNumericAmount: originalAmountSpecified && amount > 0,
             };
           } else {
-            combinedIngredients[initialId].amount += amount;
+            combinedIngredients[nameKey].amount += amount;
+            if (originalAmountSpecified && amount > 0) {
+                combinedIngredients[nameKey].hasEverHadNumericAmount = true;
+            }
+
+            // Päivitä yksikkö, jos uusi on spesifimpi (ei tyhjä) ja vanha oli tyhjä
+            if (currentUnit && !combinedIngredients[nameKey].unit) {
+              combinedIngredients[nameKey].unit = currentUnit;
+            }
+            // Jos uusi yksikkö on "kpl" ja vanha oli tyhjä, priorisoi "kpl"
+            else if (currentUnit && currentUnit.toLowerCase() === 'kpl' && !combinedIngredients[nameKey].unit) {
+                combinedIngredients[nameKey].unit = currentUnit;
+            }
+            // Merkitse, jos yksikkö on nyt määritelty
+            if (currentUnit) {
+                combinedIngredients[nameKey].hasEverHadExplicitUnit = true;
+            }
           }
         });
       }
     });
 
-    const convertedIngredients = Object.values(combinedIngredients).map(item => {
-      const conversion = conversionFactors[item.unit];
-      let currentId = item.originalId; // Käytä alkuperäistä id:tä, ellei yksikkö muutu
-
-      if (conversion && item.amount >= conversion.threshold) {
-        const newAmount = parseFloat((item.amount / conversion.factor).toFixed(2));
-        currentId = `${item.name.trim().toLowerCase()}-${conversion.to}`; // Päivitä id, jos yksikkö muuttuu
-        return {
-          name: item.name, // Säilytä alkuperäinen nimen muotoilu
-          amount: newAmount,
-          unit: conversion.to,
-          id: currentId
-        };
-      }
-      
+    // Jälkikäsittely yksiköille ja muunnoksille
+    const processedIngredients = Object.values(combinedIngredients).map(item => {
+      let finalUnit = item.unit;
       let finalAmount = item.amount;
-      if (item.amount % 1 !== 0) { // Jos on desimaaliluku
-         finalAmount = parseFloat(item.amount.toFixed(2));
+
+      // Jos yksikkö on tyhjä JA ainesosalle on joskus määritelty numeerinen määrä,
+      // JA sille ei ole koskaan määritelty muuta ei-tyhjää yksikköä, oleta "kpl".
+      if (finalUnit === "" && item.hasEverHadNumericAmount && !item.hasEverHadExplicitUnit && finalAmount > 0) {
+        finalUnit = "kpl";
+      }
+      // Jos yksikkö on edelleen tyhjä, mutta määrää on, ja jossain vaiheessa on ollut "kpl", käytä "kpl"
+      // Tämä on hieman redundantti ylläolevan kanssa, mutta varmistaa "kpl":n pysyvyyden
+      else if (finalUnit === "" && item.hasEverHadNumericAmount && item.unit.toLowerCase() === 'kpl' && finalAmount > 0) {
+         finalUnit = "kpl";
+      }
+
+
+      // Tee yksikkömuunnokset (esim. dl -> l)
+      const conversion = conversionFactors[finalUnit]; // Käytä finalUnitia tässä
+      if (conversion && finalAmount >= conversion.threshold) {
+        finalAmount = parseFloat((finalAmount / conversion.factor).toFixed(2));
+        finalUnit = conversion.to;
+      } else if (finalAmount % 1 !== 0) { // Jos on desimaaliluku ilman muunnosta
+         finalAmount = parseFloat(finalAmount.toFixed(2));
       }
       
+      // Luodaan uniikki ID lopullisen yksikön ja nimen perusteella
+      const itemId = `${item.name.trim().toLowerCase()}-${finalUnit || 'none'}`;
+
       return {
         name: item.name,
         amount: finalAmount,
-        unit: item.unit,
-        id: currentId // Käytä alkuperäistä tai päivitettyä id:tä
+        unit: finalUnit,
+        id: itemId,
       };
-    }).sort((a, b) =>
+    }).filter(item => item.amount > 0 || (item.amount === 0 && item.unit !== "" && item.unit !== " ")) // Suodata pois nollamäärät ilman yksikköä
+      .sort((a, b) =>
       a.name.localeCompare(b.name, 'fi', { sensitivity: 'base' })
     );
 
-    return convertedIngredients;
+    return processedIngredients;
   }, [selectedRecipes]);
 
   useEffect(() => {
     setCheckedItems(prevCheckedItems => {
       const newCheckedState = {};
       shoppingItems.forEach(item => {
-        const key = item.id; // Käytä ainesosan yksilöivää id:tä avaimena
+        const key = item.id; 
         newCheckedState[key] = prevCheckedItems[key] || false; 
       });
       return newCheckedState;
@@ -129,7 +164,7 @@ const ShoppingList = ({ selectedRecipes }) => {
         <>
           <p className="shopping-list-description">Ostoslista valituista resepteistä:</p>
           {shoppingItems.length === 0 ? (
-            <p>Valituissa resepteissä ei ole ainesosia.</p>
+            <p>Valituissa resepteissä ei ole ainesosia tai niiden määrä on nolla.</p>
           ) : (
             <ul className="shopping-items">
               {shoppingItems.map((item) => {
@@ -143,7 +178,9 @@ const ShoppingList = ({ selectedRecipes }) => {
                       onChange={() => handleCheckboxChange(itemKey)}
                       aria-label={`Merkitse ${item.name} käsitellyksi`}
                     />
-                    <span className="shopping-item-name">{item.name}: {String(item.amount).replace('.', ',')} {item.unit}</span>
+                    <span className="shopping-item-name">
+                      {item.name}: {String(item.amount).replace('.', ',')}{item.unit ? ` ${item.unit}` : ''}
+                    </span>
                   </li>
                 );
               })}

@@ -21,13 +21,13 @@ const unitSynonyms = {
   "tlk": "tlk", "tölkki": "tlk",
   "vartta": "vartta",
   "varsi": "varsi",
-  "":" ",
+  "":" ", // Tyhjä yksikkö normalisoidaan välilyönniksi myöhemmin, jos tarpeen
 };
 
 function normalizeUnit(unit) {
   const lowerUnit = (unit || '').trim().toLowerCase();
   const normalized = unitSynonyms[lowerUnit];
-  return normalized || unit.trim(); 
+  return normalized || unit.trim();
 }
 
 function parseFraction(str) {
@@ -41,8 +41,10 @@ function parseFraction(str) {
   if (fractions[str]) {
     return fractions[str];
   }
+  // Kokeillaan, jos murtoluku on osa merkkijonoa, esim. "½tl" -> "½"
   if (str.length > 0 && fractions[str.charAt(0)]) {
     const restOfString = str.substring(1).trim();
+    // Varmistetaan, ettei murtoluvun jälkeen tule heti numeroa, joka voisi olla osa määrää
     if (restOfString === '' || isNaN(parseFloat(restOfString.charAt(0)))) {
         return fractions[str.charAt(0)];
     }
@@ -64,7 +66,7 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
   const [recipeText, setRecipeText] = useState('');
 
   const parseAmountString = (amountStrInput) => {
-    if (!amountStrInput) return 1;
+    if (!amountStrInput || String(amountStrInput).trim() === '') return ''; // Palauta tyhjä, jos syöte on tyhjä
     let amountStr = String(amountStrInput).trim();
     console.log(`  parseAmountString - input: "${amountStr}"`);
 
@@ -74,37 +76,42 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
         return fractionValue;
     }
 
-    if (amountStr.includes('-')) {
+    // Käsittele "-" vain osana lukualuetta, älä oleta sen olevan negatiivinen luku ilman kontekstia
+    if (amountStr.includes('-') && !amountStr.startsWith('-')) { // Sallii negatiiviset luvut, mutta käsittelee välialueet
       const parts = amountStr.split('-');
-      if (parts.length > 0) amountStr = parts[0].trim();
+      if (parts.length > 0) amountStr = parts[0].trim(); // Käytä ensimmäistä osaa alueesta
       console.log(`  parseAmountString - range recognized, using: "${amountStr}"`);
     }
     
     amountStr = amountStr.replace(',', '.');
     const parsed = parseFloat(amountStr);
-    const result = isNaN(parsed) ? 1 : parsed;
+    // ÄLÄ palauta 1, jos NaN. Palauta alkuperäinen merkkijono, jos parseFloat epäonnistuu,
+    // tai tyhjä, jos halutaan nimenomaan numeerinen arvo tai ei mitään.
+    // Tässä tapauksessa, jos amountStr ei ole validi luku, se voi olla osa nimeä.
+    // Jätetään RecipeFormin vastuulle validoinnin. Tässä pyritään vain numeroon.
+    const result = isNaN(parsed) ? '' : parsed; // Palauta tyhjä merkkijono, jos ei ole luku
     console.log(`  parseAmountString - parseFloat result: ${result} (from "${amountStr}")`);
     return result;
   };
 
   const parseSingleIngredientLine = (line) => {
-    const originalLine = line; 
+    const originalLine = line;
     console.log(`--- parseSingleIngredientLine ALKU --- Rivi: "${originalLine}"`);
     let currentLine = line.replace(/\t+/g, ' ').trim();
-    let amount = 1; 
+    let amount = ''; // MUUTETTU: Oletusarvo tyhjä merkkijono
     let unit = '';
     let name = '';
-    let amountStringPart = ''; // Tämä tallentaa alkuperäisen määrämerkkijonon
+    let amountStringPart = '';
 
-    const initialNumberRegex = /^(\d+)(\s+|$)/; 
+    const initialNumberRegex = /^(\d+)(\s+|$)/;
     let initialNumberMatch = currentLine.match(initialNumberRegex);
-    let mainAmountString = ''; // Kokonaislukuosa
-    let combinedAmount = 0; // Lopullinen numeroarvo
+    let mainAmountString = '';
+    let combinedAmount = NaN; // MUUTETTU: NaN oletuksena
 
     if (initialNumberMatch && initialNumberMatch[1]) {
         mainAmountString = initialNumberMatch[1].trim();
-        combinedAmount = parseFloat(mainAmountString.replace(',', '.'));
-        if (isNaN(combinedAmount)) combinedAmount = 0;
+        const parsedMainAmount = parseFloat(mainAmountString.replace(',', '.'));
+        if (!isNaN(parsedMainAmount)) combinedAmount = parsedMainAmount;
 
         let lineAfterInitialNumber = currentLine.substring(initialNumberMatch[0].length).trim();
         console.log(`   Alkuosa määrästä tunnistettu: mainAmountString="${mainAmountString}", combinedAmount=${combinedAmount}, lineAfterInitialNumber="${lineAfterInitialNumber}"`);
@@ -116,7 +123,7 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
             const fractionStringPart = fractionMatch[1].trim();
             const fractionValue = parseFraction(fractionStringPart);
             if (!isNaN(fractionValue)) {
-                combinedAmount += fractionValue;
+                combinedAmount = (isNaN(combinedAmount) ? 0 : combinedAmount) + fractionValue; // Lisää murtoluku
                 amountStringPart = `${mainAmountString} ${fractionStringPart}`;
                 currentLine = lineAfterInitialNumber.substring(fractionMatch[0].length).trim();
                 console.log(`    Lisätty murtoluku (${fractionStringPart}=${fractionValue}) määrään: combinedAmount=${combinedAmount}, currentLine nyt="${currentLine}"`);
@@ -128,51 +135,44 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
             amountStringPart = mainAmountString;
             currentLine = lineAfterInitialNumber;
         }
-        amount = combinedAmount;
-        if (amount === 0 && mainAmountString !== "0" && mainAmountString !== "") amount = 1; 
-        else if (amount === 0 && mainAmountString === "0") amount = 0;
+        amount = isNaN(combinedAmount) ? '' : combinedAmount; // Aseta amount, jos validi luku
         
     } else {
         // Jos ei alkanut kokonaisluvulla, kokeile suoraan murtolukuja/yleistä määrää
-        const generalAmountRegex = /^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[\s,.]*\d*(?:\s*-\s*\d+[\s,.]*\d*)?)|(?:\d*\s*[/]\s*\d+)|(?:\d+))(\s+|$)/i;
-        let generalAmountMatch = currentLine.match(generalAmountRegex);
-        if (generalAmountMatch && generalAmountMatch[1]) {
-            amountStringPart = generalAmountMatch[1].trim();
-            currentLine = currentLine.substring(generalAmountMatch[0].length).trim();
-            amount = parseAmountString(amountStringPart);
-            console.log(`   Yleinen määräosa tunnistettu: amountStringPart="${amountStringPart}", ParsedAmount=${amount}, currentLine nyt="${currentLine}"`);
-        } else {
-             // Viimeinen yritys: numero ja yksikkö kiinni toisissaan
-            const numberUnitNoSpaceRegex = /^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[,.]\d*)|\d+)([a-zA-ZäöåÄÖÅμ]+)(.*)/i;
-            const numberUnitMatch = currentLine.match(numberUnitNoSpaceRegex);
-            if (numberUnitMatch) {
-                const potentialAmountStr = numberUnitMatch[1];
-                const potentialUnitStr = numberUnitMatch[2];
-                const restOfLine = (numberUnitMatch[3] || "").trim();
-                
-                const knownUnitsForNoSpace = Object.keys(unitSynonyms).filter(u => u !== '' && u !== ' ');
-                let tempUnitCheck = '';
-                for (const knownUnit of knownUnitsForNoSpace) {
-                    if (potentialUnitStr.toLowerCase() === knownUnit.toLowerCase()) {
-                        tempUnitCheck = knownUnit;
-                        break;
-                    }
-                }
+        // Päivitetty regex tunnistamaan myös desimaalit ja murtoluvut ilman välitöntä välilyöntiä
+        const generalAmountOrUnitRegex = /^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[,.]\d*)|\d+)([a-zA-ZäöåÄÖÅμ]*)(.*)/i;
+        let generalMatch = currentLine.match(generalAmountOrUnitRegex);
 
-                if (tempUnitCheck) {
-                    amountStringPart = potentialAmountStr;
-                    amount = parseAmountString(amountStringPart);
-                    unit = tempUnitCheck;
-                    currentLine = restOfLine;
-                    console.log(`   Erityistapaus (numeroYksikkö): amountStringPart="${amountStringPart}", ParsedAmount=${amount}, unit="${unit}", currentLine nyt="${currentLine}"`);
-                } else {
-                    amount = 1; 
-                    console.log(`   Ei selkeää määräosaa tunnistettu alusta (eikä numeroYksikkö-match), currentLine käsittelyyn yksikölle/nimelle="${currentLine}"`);
-                }
+        if (generalMatch) {
+            const potentialAmountStr = generalMatch[1] ? generalMatch[1].trim() : '';
+            const potentialUnitStr = generalMatch[2] ? generalMatch[2].trim() : '';
+            const restOfLineAfterMatch = (generalMatch[3] || "").trim();
+
+            const parsedPotentialAmount = parseAmountString(potentialAmountStr);
+
+            if (parsedPotentialAmount !== '') { // Jos amount on validi
+                amountStringPart = potentialAmountStr;
+                amount = parsedPotentialAmount;
+                currentLine = (potentialUnitStr + " " + restOfLineAfterMatch).trim(); // Yksikkö ja loppuosa siirtyvät jatkokäsittelyyn
+                console.log(`   Yleinen määräosa tunnistettu: amountStringPart="${amountStringPart}", ParsedAmount=${amount}, currentLine nyt="${currentLine}"`);
+            } else if (potentialAmountStr && unitSynonyms[potentialAmountStr.toLowerCase()]) {
+                 // Jos amount-osa itsessään oli tunnettu yksikkö (esim. "tl sokeria")
+                unit = potentialAmountStr;
+                amount = ''; // Ei numeerista määrää
+                amountStringPart = '';
+                currentLine = (potentialUnitStr + " " + restOfLineAfterMatch).trim();
+                console.log(`   Tunnistettu yksikkö määrän paikalla: unit="${unit}", currentLine nyt="${currentLine}"`);
+
             } else {
-                amount = 1; 
+                // Ei tunnistettu selkeää määrää, amount pysyy tyhjänä
+                amount = '';
+                amountStringPart = '';
                 console.log(`   Ei selkeää määräosaa tunnistettu alusta, currentLine käsittelyyn yksikölle/nimelle="${currentLine}"`);
             }
+        } else {
+            amount = ''; // MUUTETTU: Oletusarvo tyhjä merkkijono
+            amountStringPart = '';
+            console.log(`   Ei selkeää määräosaa tunnistettu alusta, currentLine käsittelyyn yksikölle/nimelle="${currentLine}"`);
         }
     }
     
@@ -181,44 +181,44 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
     const knownUnits = Object.keys(unitSynonyms).filter(u => u !== '' && u !== ' ');
     knownUnits.sort((a, b) => b.length - a.length); 
 
-    if (unit === '') { // Etsi yksikköä vain, jos sitä ei ole jo tunnistettu (esim. "50g" tapauksessa)
+    if (unit === '') { 
         for (const knownUnit of knownUnits) {
-            const unitRegex = new RegExp(`^(${knownUnit})(\\s+|$)`, 'i'); 
-            if (tempRemainingForUnit.match(unitRegex)) {
-                unit = tempRemainingForUnit.match(unitRegex)[1]; 
-                tempRemainingForUnit = tempRemainingForUnit.substring(unit.length).trim();
-                console.log(`   Yksikkö tunnistettu: unit="${unit}", tempRemainingForUnit nyt="${tempRemainingForUnit}"`);
-                break;
+            // Etsitään yksikköä rivin alusta (jäljellä olevasta osasta)
+            if (tempRemainingForUnit.toLowerCase().startsWith(knownUnit.toLowerCase())) {
+                // Varmistetaan, että se on kokonainen sana tai sitä seuraa ei-aakkosnumeerinen merkki (tai rivin loppu)
+                const unitCandidate = tempRemainingForUnit.substring(0, knownUnit.length);
+                const charAfterUnit = tempRemainingForUnit.length > knownUnit.length ? tempRemainingForUnit.charAt(knownUnit.length) : '';
+                if (unitCandidate.toLowerCase() === knownUnit.toLowerCase() && (charAfterUnit === '' || !charAfterUnit.match(/[a-zA-ZäöåÄÖÅμ0-9]/i))) {
+                    unit = unitCandidate;
+                    tempRemainingForUnit = tempRemainingForUnit.substring(unit.length).trim();
+                    console.log(`   Yksikkö tunnistettu: unit="${unit}", tempRemainingForUnit nyt="${tempRemainingForUnit}"`);
+                    break;
+                }
             }
         }
     }
     
     name = tempRemainingForUnit.trim();
 
-    if (name === '' && currentLine.length > 0 && unit === '' && (amount !== 1 || (amountStringPart !== '' && amountStringPart !== '1'))) {
-        name = currentLine;
-        console.log(`   Nimi asetettu currentLineksi (koska tyhjä ja yksikköä ei löytynyt, mutta määrä oli spesifioitu/erilainen kuin oletus): "${name}"`);
-    }
-    if (name === '' && amount === 1 && unit === '' && originalLine.trim() !== '' && originalLine.trim() !== amountStringPart.trim()) {
-        if(amountStringPart === '' || (amountStringPart === '1' && originalLine.trim() !== '1') ) {
-            name = originalLine.trim();
-            console.log(`   Nimi asetettu originalLineksi (koska kaikki muu tyhjää/oletus tai ei määrää): "${name}"`);
-        }
+    // Jos nimi on tyhjä, mutta alkuperäinen rivi ei ollut, ja määrää tai yksikköä ei ole spesifioitu,
+    // käytä alkuperäistä riviä nimenä.
+    if (name === '' && amount === '' && unit === '' && originalLine.trim() !== '') {
+        name = originalLine.trim();
+        console.log(`   Nimi asetettu originalLineksi (koska kaikki muu tyhjää/oletus tai ei määrää): "${name}"`);
     }
     
     const result = {
         name: name,
-        amount: amount,
+        amount: amount, // Voi olla numero tai tyhjä merkkijono
         unit: normalizeUnit(unit),
-        originalLine: originalLine, 
+        originalLine: originalLine,
         isEmptyName: name === '',
-        amountStringPart: amountStringPart 
+        amountStringPart: amountStringPart
     };
     console.log(`--- parseSingleIngredientLine LOPPU --- Palautetaan:`, JSON.stringify(result));
     return result;
   }
 
-  // ... (parseRecipe-funktio ja komponentin loppuosa pysyvät samana kuin edellisessä korjatussa versiossa) ...
   const parseRecipe = () => {
     if (!recipeText.trim()) {
       showToast('Liitä ensin reseptiteksti.', 'error');
@@ -264,16 +264,16 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
 
       if (isIngredientsKeyword) {
         if (tempIngredientBuffer && tempIngredientBuffer.isEmptyName) {
-            parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine });
+            parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine, amount: tempIngredientBuffer.amount === 1 && tempIngredientBuffer.amountStringPart === '' ? '' : tempIngredientBuffer.amount });
             console.log("   Puskuri (tyhjä nimi) lisätty ennen INGREDIENTS headeria:", tempIngredientBuffer.originalLine);
         }
         tempIngredientBuffer = null;
         readingStage = 'ingredients';
         console.log("   Vaihdettu tilaan: ingredients");
-        continue; 
+        continue;
       } else if (isInstructionsKeyword) {
         if (tempIngredientBuffer && tempIngredientBuffer.isEmptyName) {
-             parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine });
+             parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine, amount: tempIngredientBuffer.amount === 1 && tempIngredientBuffer.amountStringPart === '' ? '' : tempIngredientBuffer.amount });
              console.log("   Puskuri (tyhjä nimi) lisätty ennen INSTRUCTIONS headeria:", tempIngredientBuffer.originalLine);
         }
         tempIngredientBuffer = null;
@@ -284,7 +284,7 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
 
       if (line === '') {
           if (tempIngredientBuffer && tempIngredientBuffer.isEmptyName) {
-              parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine });
+              parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine, amount: tempIngredientBuffer.amount === 1 && tempIngredientBuffer.amountStringPart === '' ? '' : tempIngredientBuffer.amount });
               console.log("   Puskuri (tyhjä nimi) lisätty tyhjän rivin yhteydessä:", tempIngredientBuffer.originalLine);
           }
           tempIngredientBuffer = null;
@@ -295,62 +295,71 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
       if (readingStage === 'ingredients') {
         const currentParsed = parseSingleIngredientLine(line);
         
-        if (tempIngredientBuffer) { 
+        if (tempIngredientBuffer) {
             console.log("   Käsitellään puskuria:", JSON.stringify(tempIngredientBuffer));
             console.log("   Nykyinen jäsennetty:", JSON.stringify(currentParsed));
-            if ((!currentParsed.amount || currentParsed.amount === 1) && currentParsed.unit === normalizeUnit('') && currentParsed.name && !currentParsed.isEmptyName) {
-                tempIngredientBuffer.name = (`${tempIngredientBuffer.name || ''} ${currentParsed.name}`).trim(); 
+            // Jos nykyisellä ei ole määrää eikä yksikköä, ja sillä on nimi, yhdistä se puskuroidun nimeen
+            if (currentParsed.amount === '' && currentParsed.unit === normalizeUnit('') && currentParsed.name && !currentParsed.isEmptyName) {
+                tempIngredientBuffer.name = (`${tempIngredientBuffer.name || ''} ${currentParsed.name}`).trim();
                 if (currentParsed.name) tempIngredientBuffer.isEmptyName = false;
                 
-                if (tempIngredientBuffer.originalLine === tempIngredientBuffer.name && currentParsed.name) {
-                    tempIngredientBuffer.name = currentParsed.name;
+                // Korjaus: Jos alkuperäinen puskuroitu rivi oli vain määrä/yksikkö, ja nyt tulee nimi
+                if (tempIngredientBuffer.originalLine === tempIngredientBuffer.amountStringPart + (tempIngredientBuffer.unit === normalizeUnit('') ? '' : tempIngredientBuffer.unit) && currentParsed.name) {
+                    // tempIngredientBuffer.name was previously set to originalLine which was just amount/unit
+                    // now we have a proper name part
                 }
+
 
                 parsedIngredients.push(tempIngredientBuffer);
                 console.log("   Yhdistetty puskuriin, tulos:", JSON.stringify(tempIngredientBuffer));
                 tempIngredientBuffer = null;
-            } else {
+            } else { // Muuten, puskuri on valmis
                 if (tempIngredientBuffer.isEmptyName) {
-                     parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine });
+                     parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine, amount: tempIngredientBuffer.amount === 1 && tempIngredientBuffer.amountStringPart === '' ? '' : tempIngredientBuffer.amount });
                      console.log("   Puskuri (tyhjä nimi) purettu erillisenä:", tempIngredientBuffer.originalLine);
                 } else {
                     parsedIngredients.push(tempIngredientBuffer);
                      console.log("   Puskuri purettu:", JSON.stringify(tempIngredientBuffer));
                 }
                 
-                if (currentParsed.isEmptyName && currentParsed.unit !== normalizeUnit('')) { 
-                    tempIngredientBuffer = currentParsed;
+                // Käsittele nykyinen jäsennetty rivi
+                if (currentParsed.isEmptyName && (currentParsed.unit !== normalizeUnit('') || currentParsed.amount !== '')) {
+                    tempIngredientBuffer = currentParsed; // Puskuroi, jos vain määrä/yksikkö ilman nimeä
                     console.log("   Nykyinen puskuroitu (edellinen purettiin):", JSON.stringify(currentParsed));
-                } else if (currentParsed.name || (currentParsed.unit !== normalizeUnit('') && currentParsed.amount !== 1) || (currentParsed.unit === normalizeUnit('') && currentParsed.amount !== 1 && currentParsed.originalLine)) {
-                    parsedIngredients.push(currentParsed);
+                } else if (currentParsed.name || currentParsed.amount !== '' || currentParsed.unit !== normalizeUnit('')) {
+                    parsedIngredients.push(currentParsed); // Lisää suoraan, jos siinä on tarpeeksi tietoa
                      console.log("   Nykyinen lisätty suoraan (edellinen puskuri purettiin):", JSON.stringify(currentParsed));
                     tempIngredientBuffer = null;
-                } else { 
+                } else { // Ei tarpeeksi tietoa, mutta alkuperäinen rivi oli olemassa
                     if (currentParsed.originalLine && currentParsed.originalLine.trim() !== '') {
-                        parsedIngredients.push({ name: currentParsed.originalLine, amount: 1, unit: normalizeUnit('')});
+                        parsedIngredients.push({ name: currentParsed.originalLine, amount: '', unit: normalizeUnit('')});
                         console.log("   Nykyinen lisätty alkuperäisenä rivinä (ei tunnistettu dataa):", currentParsed.originalLine);
                     }
                     tempIngredientBuffer = null;
                 }
             }
-        } else { 
-            if (currentParsed.isEmptyName && (currentParsed.unit !== normalizeUnit('') || (currentParsed.amount !== 1 && currentParsed.amountStringPart ) )) { 
-                 if (currentParsed.unit !== normalizeUnit('') || (currentParsed.amount !==1 || (currentParsed.amountStringPart && currentParsed.originalLine.match(/^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[\s,.]*\d*(?:\s*-\s*\d+[\s,.]*\d*)?)|(?:\d*\s*[/]\s*\d+)|(?:\d+))/i)) ) ) {
+        } else { // Ei puskuria
+            if (currentParsed.isEmptyName && (currentParsed.unit !== normalizeUnit('') || currentParsed.amount !== '')) {
+                // Jos rivi on vain määrä ja/tai yksikkö ilman nimeä, puskuroi se.
+                // Esim. "2 dl" tai "1 kpl" tai pelkkä "2"
+                 if (currentParsed.unit !== normalizeUnit('') || (currentParsed.amount !=='' && currentParsed.originalLine.match(/^([¼½¾⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|(?:\d+[\s,.]*\d*(?:\s*-\s*\d+[\s,.]*\d*)?)|(?:\d*\s*[/]\s*\d+)|(?:\d+[,.]\d*)|^\d+)/i)) ) {
                     tempIngredientBuffer = currentParsed;
                     console.log("   Puskuroitu (ei ed. puskuria):", JSON.stringify(currentParsed));
                  } else if (currentParsed.originalLine && currentParsed.originalLine.trim() !== ''){
-                     parsedIngredients.push({name: currentParsed.originalLine, amount:1, unit: normalizeUnit('')});
+                     // Jos ei tunnistettu määrää/yksikköä, mutta rivi ei ole tyhjä, lisää se nimenä
+                     parsedIngredients.push({name: currentParsed.originalLine, amount:'', unit: normalizeUnit('')});
                      console.log("   Lisätty alkuperäinen rivi nimellä (ei ed. puskuria, ei tunnistettu dataa, ei puskuroitu):", currentParsed.originalLine);
                      tempIngredientBuffer = null;
                  } else {
-                    tempIngredientBuffer = null;
+                    tempIngredientBuffer = null; // Tyhjä rivi tai merkityksetön
                  }
-            } else  { 
-                if (currentParsed.name || currentParsed.unit !== normalizeUnit('') || currentParsed.amount !== 1) {
+            } else  { // Jos rivillä on nimi tai se on muuten täydellinen, lisää se suoraan
+                if (currentParsed.name || currentParsed.amount !== '' || currentParsed.unit !== normalizeUnit('')) {
                     parsedIngredients.push(currentParsed);
                     console.log("   Lisätty suoraan (ei ed. puskuria):", JSON.stringify(currentParsed));
                 } else if (currentParsed.originalLine && currentParsed.originalLine.trim() !== ''){
-                     parsedIngredients.push({name: currentParsed.originalLine, amount:1, unit: normalizeUnit('')});
+                     // Viimeinen oljenkorsi: jos mitään ei tunnistettu, mutta rivi ei ole tyhjä, käytä sitä nimenä
+                     parsedIngredients.push({name: currentParsed.originalLine, amount:'', unit: normalizeUnit('')});
                      console.log("   Lisätty alkuperäinen rivi nimellä (ei ed. puskuria, ei tunnistettu dataa):", currentParsed.originalLine);
                 }
                 tempIngredientBuffer = null;
@@ -358,22 +367,25 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
         }
 
       } else if (readingStage === 'instructions' && line) {
-        const cleanedInstruction = line.replace(/^\d+\.\s*/, '').trim();
+        const cleanedInstruction = line.replace(/^\d+\.\s*/, '').trim(); // Poistaa numeroinnin
         if (cleanedInstruction) {
             parsedInstructionsArray.push(cleanedInstruction);
         }
       }
     }
 
-    if (tempIngredientBuffer) { 
+    // Käsittele viimeinen mahdollinen puskuri
+    if (tempIngredientBuffer) {
         if (tempIngredientBuffer.isEmptyName && tempIngredientBuffer.originalLine.trim() !== '') {
-            parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine });
+            // Jos puskurissa on vain määrä/yksikkö, mutta ei nimeä, käytä alkuperäistä riviä nimenä
+            parsedIngredients.push({ ...tempIngredientBuffer, name: tempIngredientBuffer.originalLine, amount: tempIngredientBuffer.amount === 1 && tempIngredientBuffer.amountStringPart === '' ? '' : tempIngredientBuffer.amount });
         } else if (!tempIngredientBuffer.isEmptyName) {
             parsedIngredients.push(tempIngredientBuffer);
         }
         console.log("--- Viimeinen puskuri purettu:", JSON.stringify(tempIngredientBuffer));
     }
 
+    // Jos nimeä ei tunnistettu, mutta ainesosia tai ohjeita on, yritä ottaa ensimmäinen ei-tyhjä rivi nimeksi
     if (!parsedName && (parsedIngredients.length > 0 || parsedInstructionsArray.length > 0)) {
         const firstNonEmptyLine = lines.find(l => l.trim() !== '');
         if(firstNonEmptyLine && !/^(ainekset|ainesosat|raaka-aineet|ohjeet|ohje|valmistusohje|valmistus)/i.test(firstNonEmptyLine)) {
@@ -389,14 +401,23 @@ const RecipeImporter = ({ onRecipeParsed, showToast }) => {
         showToast('Reseptin jäsentäminen epäonnistui. Tarkista tekstin muoto ja varmista otsikot.', 'error');
         return;
     }
+    
+    const finalIngredients = parsedIngredients.map(ing => ({
+        name: ing.name,
+        // Varmista, että amount on numero tai tyhjä merkkijono RecipeFormia varten
+        amount: typeof ing.amount === 'number' ? ing.amount : '',
+        unit: ing.unit
+    }));
+
 
     onRecipeParsed({
       nimi: parsedName,
-      ainesosat: parsedIngredients.length > 0 ? parsedIngredients.map(ing => ({name: ing.name, amount: ing.amount, unit: ing.unit})) : [{ name: '', amount: '', unit: '' }],
-      ohjeet: parsedInstructionsArray.join('\n'),
+      // Jos ainesosia ei ole, välitä tyhjä taulukko RecipeFormille, jotta se voi luoda oletusrivin
+      ainesosat: finalIngredients.length > 0 ? finalIngredients : [],
+      ohjeet: parsedInstructionsArray.join('\n'), // Muuta takaisin merkkijonoksi RecipeFormia varten
     });
 
-    if (parsedName || parsedIngredients.length > 0 || parsedInstructionsArray.length > 0) {
+    if (parsedName || finalIngredients.length > 0 || parsedInstructionsArray.length > 0) {
         showToast('Resepti jäsennetty. Tarkista tiedot ja tallenna lomake.', 'success');
     } else {
         showToast('Reseptin jäsentäminen ei tuottanut tulosta. Varmista, että reseptissä on "Ainekset" (tai vastaava) ja "Ohjeet" (tai vastaava) -otsikot, tai että ohjeet erotellaan ainesosista tyhjällä rivillä.', 'error');
@@ -419,9 +440,9 @@ Raaka-aineet
 2 dl vehnäjauhoja
 1 tl suolaa
 1-2 kpl kananmunia
+pekonia (määrä valinnainen)
 // tai
-1 pkt (170g)
-pekonia
+1 pkt (170g) pekonia
 // tai
 ripaus sokeria
 
