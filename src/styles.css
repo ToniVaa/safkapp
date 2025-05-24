@@ -8,8 +8,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #eef2f5;
+  background-color: #dfe2e4;
   color: #333;
+  background-image: url('./assets/taustakuva.jpg'); /* Vaihda polku omaan kuvaasi */
+  background-size: cover;        /* Kuva peittää koko taustan */
+  background-repeat: no-repeat;  /* Ei toistoa */
+  background-attachment: fixed;  /* Tausta pysyy paikallaan vieritettäessä */
+  background-position: center;   /* Keskittää kuvan */
 }
 
 .App {
@@ -19,7 +24,7 @@ body {
 .App-header {
   background: #444444;
   color: #fff;
-  padding: 2rem 0 1rem 0;
+  padding: 2rem 1 1rem 0;
   text-align: center;
   border-radius: 0 0 24px 24px;
   margin-bottom: 2rem;
@@ -672,6 +677,15 @@ body {
   }
   .expand-btn {
     font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    background-position: center top;
+
+    
+    /* Voit säätää myös muita arvoja tarvittaessa */
   }
 }
 
