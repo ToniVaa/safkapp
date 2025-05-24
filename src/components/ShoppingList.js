@@ -32,15 +32,22 @@ function normalizeUnit(unit) {
   return (normalized === " ") ? "" : normalized;
 }
 
-const conversionFactors = {
-  'ml': { to: 'dl', threshold: 100, factor: 100 },
-  'dl': { to: 'l', threshold: 10, factor: 10 },
-  'g': { to: 'kg', threshold: 1000, factor: 1000 },
-};
-
+function autoConvertUnit(amount, unit) {
+  if (unit === "ml" && amount >= 100) {
+    return { amount: amount / 100, unit: "dl" };
+  }
+  if (unit === "dl" && amount >= 10) {
+    return { amount: amount / 10, unit: "l" };
+  }
+  if (unit === "g" && amount >= 1000) {
+    return { amount: amount / 1000, unit: "kg" };
+  }
+  return { amount, unit };
+}
 
 const ShoppingList = ({ selectedRecipes }) => {
   const [checkedItems, setCheckedItems] = useState({});
+  const [hoveredIngredient, setHoveredIngredient] = useState(null);
 
   const shoppingItems = useMemo(() => {
     const combinedIngredients = {};
@@ -48,92 +55,63 @@ const ShoppingList = ({ selectedRecipes }) => {
       if (recipe.ainesosat && Array.isArray(recipe.ainesosat)) {
         recipe.ainesosat.forEach(ing => {
           if (!ing.name) return;
-          
           const nameKey = ing.name.trim().toLowerCase();
-          let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0;
-          // Jos amount on NaN (esim. tyhjä syöte), käytä 0:aa yhteenlaskussa,
-          // mutta huomioidaan, että alkuperäinen määrä saattoi olla "ei määritelty"
-          let originalAmountSpecified = ing.amount !== '' && !isNaN(parseFloat(String(ing.amount).replace(',', '.')));
-          if (isNaN(amount)) {
-            amount = 0;
-          }
-          
-          let currentUnit = normalizeUnit(ing.unit);
+          const unitKey = normalizeUnit(ing.unit);
+          const key = `${nameKey}|${unitKey}`;
 
-          if (!combinedIngredients[nameKey]) {
-            combinedIngredients[nameKey] = {
+          let amount = parseFloat(String(ing.amount).replace(',', '.'));
+          if (isNaN(amount)) amount = 0;
+
+          if (!combinedIngredients[key]) {
+            combinedIngredients[key] = {
               name: ing.name.trim(),
               amount: amount,
-              unit: currentUnit,
-              // Seuraa, onko tälle ainesosalle KOSKAAN määritelty ei-tyhjää yksikköä
-              hasEverHadExplicitUnit: currentUnit !== "",
-              // Seuraa, onko tälle ainesosalle KOSKAAN määritelty numeerista määrää
-              hasEverHadNumericAmount: originalAmountSpecified && amount > 0,
+              unit: unitKey,
+              recipes: [recipe.nimi],
+              hasAmount: !!ing.amount && !isNaN(amount) && amount > 0,
             };
           } else {
-            combinedIngredients[nameKey].amount += amount;
-            if (originalAmountSpecified && amount > 0) {
-                combinedIngredients[nameKey].hasEverHadNumericAmount = true;
-            }
-
-            // Päivitä yksikkö, jos uusi on spesifimpi (ei tyhjä) ja vanha oli tyhjä
-            if (currentUnit && !combinedIngredients[nameKey].unit) {
-              combinedIngredients[nameKey].unit = currentUnit;
-            }
-            // Jos uusi yksikkö on "kpl" ja vanha oli tyhjä, priorisoi "kpl"
-            else if (currentUnit && currentUnit.toLowerCase() === 'kpl' && !combinedIngredients[nameKey].unit) {
-                combinedIngredients[nameKey].unit = currentUnit;
-            }
-            // Merkitse, jos yksikkö on nyt määritelty
-            if (currentUnit) {
-                combinedIngredients[nameKey].hasEverHadExplicitUnit = true;
+            combinedIngredients[key].amount += amount;
+            combinedIngredients[key].recipes.push(recipe.nimi);
+            if (!!ing.amount && !isNaN(amount) && amount > 0) {
+              combinedIngredients[key].hasAmount = true;
             }
           }
         });
       }
     });
 
-    // Jälkikäsittely yksiköille ja muunnoksille
-    const processedIngredients = Object.values(combinedIngredients).map(item => {
-      let finalUnit = item.unit;
-      let finalAmount = item.amount;
-
-      // Jos yksikkö on tyhjä JA ainesosalle on joskus määritelty numeerinen määrä,
-      // JA sille ei ole koskaan määritelty muuta ei-tyhjää yksikköä, oleta "kpl".
-      if (finalUnit === "" && item.hasEverHadNumericAmount && !item.hasEverHadExplicitUnit && finalAmount > 0) {
-        finalUnit = "kpl";
+    // Jos sama ainesosa löytyy sekä määrällä että ilman määrää, yhdistä ne
+    const merged = {};
+    Object.values(combinedIngredients).forEach(item => {
+      const nameKey = item.name.trim().toLowerCase();
+      if (!merged[nameKey]) {
+        merged[nameKey] = { ...item };
+      } else {
+        // Jos jommassakummassa on määrä, käytä sitä ja laske yhteen
+        merged[nameKey].amount += item.amount;
+        merged[nameKey].recipes = [...new Set([...merged[nameKey].recipes, ...item.recipes])];
+        merged[nameKey].unit = merged[nameKey].unit || item.unit;
+        merged[nameKey].hasAmount = merged[nameKey].hasAmount || item.hasAmount;
       }
-      // Jos yksikkö on edelleen tyhjä, mutta määrää on, ja jossain vaiheessa on ollut "kpl", käytä "kpl"
-      // Tämä on hieman redundantti ylläolevan kanssa, mutta varmistaa "kpl":n pysyvyyden
-      else if (finalUnit === "" && item.hasEverHadNumericAmount && item.unit.toLowerCase() === 'kpl' && finalAmount > 0) {
-         finalUnit = "kpl";
-      }
+    });
 
-
-      // Tee yksikkömuunnokset (esim. dl -> l)
-      const conversion = conversionFactors[finalUnit]; // Käytä finalUnitia tässä
-      if (conversion && finalAmount >= conversion.threshold) {
-        finalAmount = parseFloat((finalAmount / conversion.factor).toFixed(2));
-        finalUnit = conversion.to;
-      } else if (finalAmount % 1 !== 0) { // Jos on desimaaliluku ilman muunnosta
-         finalAmount = parseFloat(finalAmount.toFixed(2));
-      }
-      
-      // Luodaan uniikki ID lopullisen yksikön ja nimen perusteella
-      const itemId = `${item.name.trim().toLowerCase()}-${finalUnit || 'none'}`;
-
-      return {
-        name: item.name,
-        amount: finalAmount,
-        unit: finalUnit,
-        id: itemId,
-      };
-    }).filter(item => item.amount > 0 || (item.amount === 0 && item.unit !== "" && item.unit !== " ")) // Suodata pois nollamäärät ilman yksikköä
-      .sort((a, b) =>
-      a.name.localeCompare(b.name, 'fi', { sensitivity: 'base' })
-    );
-
-    return processedIngredients;
+    return Object.values(merged)
+      .map(item => {
+        let display = item.name;
+        if (item.hasAmount) {
+          let { amount, unit } = autoConvertUnit(item.amount, item.unit);
+          amount = unit === "l" || unit === "kg"
+            ? String(Number(amount).toLocaleString("fi-FI", { maximumFractionDigits: 2 }))
+            : String(amount).replace('.', ',');
+          display = `${item.name}: ${amount}${unit ? ` ${unit}` : ''}`;
+        }
+        return {
+          ...item,
+          display
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'fi', { sensitivity: 'base' }));
   }, [selectedRecipes]);
 
   useEffect(() => {
@@ -155,6 +133,21 @@ const ShoppingList = ({ selectedRecipes }) => {
     });
   };
 
+  // Luo ostoslista yhdistämällä ainesosat (esimerkki)
+  const allIngredients = {};
+  selectedRecipes.forEach(recipe => {
+    recipe.ainesosat.forEach(ing => {
+      const key = ing.name.trim().toLowerCase();
+      if (!allIngredients[key]) {
+        allIngredients[key] = { ...ing, recipes: [recipe.nimi] };
+      } else {
+        allIngredients[key].recipes.push(recipe.nimi);
+      }
+    });
+  });
+
+  const ingredientList = Object.values(allIngredients);
+
   return (
     <div className="shopping-list-container">
       <h2>Ostoslista</h2>
@@ -167,20 +160,36 @@ const ShoppingList = ({ selectedRecipes }) => {
             <p>Valituissa resepteissä ei ole ainesosia tai niiden määrä on nolla.</p>
           ) : (
             <ul className="shopping-items">
-              {shoppingItems.map((item) => {
-                const itemKey = item.id; 
+              {shoppingItems.map((item, idx) => {
+                // Selvitä reseptit, joissa tämä ainesosa on
+                const matchingIngredient = ingredientList.find(ing =>
+                  ing.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+                );
                 return (
-                  <li key={itemKey} className={checkedItems[itemKey] ? 'checked' : ''}>
+                  <li
+                    key={item.id}
+                    className="shopping-list-item"
+                    onMouseEnter={() => setHoveredIngredient(idx)}
+                    onMouseLeave={() => setHoveredIngredient(null)}
+                    style={{ position: "relative" }}
+                  >
                     <input
                       type="checkbox"
                       className="shopping-item-checkbox"
-                      checked={!!checkedItems[itemKey]} 
-                      onChange={() => handleCheckboxChange(itemKey)}
+                      checked={!!checkedItems[item.id]}
+                      onChange={() => handleCheckboxChange(item.id)}
                       aria-label={`Merkitse ${item.name} käsitellyksi`}
                     />
                     <span className="shopping-item-name">
-                      {item.name}: {String(item.amount).replace('.', ',')}{item.unit ? ` ${item.unit}` : ''}
+                      {item.display}
                     </span>
+                    {hoveredIngredient === idx && matchingIngredient && (
+                      <div className="ingredient-tooltip">
+                        {matchingIngredient.recipes.length === 1
+                          ? `Resepti:\n${matchingIngredient.recipes[0]}`
+                          : `Reseptit:\n${matchingIngredient.recipes.join('\n')}`}
+                      </div>
+                    )}
                   </li>
                 );
               })}

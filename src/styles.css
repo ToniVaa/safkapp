@@ -759,3 +759,20 @@ body {
   display: block; /* Varmistaa, että margin: auto toimii */
   margin: 0 auto; /* Keskittää logon headerissä */
 }
+
+.ingredient-tooltip {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #222;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  white-space: pre-line; /* Tämä mahdollistaa rivinvaihdot */
+  font-size: 0.95rem;
+  z-index: 10;
+  margin-left: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
