@@ -258,7 +258,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
         ))}
         {errors.ingredients && <p className="validation-error-message">{errors.ingredients}</p>}
         <button type="button" onClick={addIngredientField} className="add-ingredient-button">
-          Lisää ainesosa
+          + Uusi ainesosa 
         </button>
 
         <div className="form-group">
