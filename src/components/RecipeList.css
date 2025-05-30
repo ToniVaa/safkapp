@@ -31,7 +31,7 @@
 .recipe-header {
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    /* Poistettu margin-bottom, jotta thumbnail tulee lähemmäs */
 }
 
 .recipe-header input[type="checkbox"] {
@@ -41,20 +41,53 @@
     cursor: pointer;
 }
 
-.recipe-header label {
+.recipe-name { /* Lisätty tämä */
     font-size: 1.2rem;
     font-weight: bold;
     color: #333;
-    flex-grow: 1; /* Allow label to take available space */
-    cursor: pointer;
+    flex-grow: 1; 
+    cursor: default; /* Tai pointer, jos haluat sen olevan klikattava */
 }
+
+.expand-btn { /* Varmistetaan, että nappi on oikealla */
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.5rem; /* Suurempi +/- merkki */
+    cursor: pointer;
+    padding: 0 5px; /* Lisää hieman tilaa napin ympärille */
+    color: var(--main-green-dark);
+}
+
 
 .edit-icon-button {
     color: var(--main-green-dark);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
 }
 .delete-icon-button {
     color: #dc3545;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
 }
+
+.action-buttons-container {
+    display: flex;
+    justify-content: flex-end; /* Painikkeet oikeaan reunaan */
+    gap: 10px; /* Väliä painikkeiden välille */
+    margin-bottom: 10px; /* Väliä ennen ainesosia */
+}
+
+
+.recipe-details {
+    margin-top: 10px; /* Lisää tilaa headerin ja yksityiskohtien väliin */
+    padding-left: 30px; /* Sisennys, jotta linjassa checkboxin kanssa */
+}
+
 
 .recipe-details h3 {
     font-size: 1.1rem;
@@ -77,6 +110,27 @@
     line-height: 1.4;
 }
 
+/* Uudet tyylit thumbnail-kuvalle */
+.recipe-thumbnail-container {
+    margin-top: 8px; /* Pieni väli nimen ja kuvan välille */
+    margin-bottom: 10px; /* Väli ennen avattavia tietoja */
+    text-align: center; /* Tai center, jos haluat kuvan keskelle */
+    
+}
+
+.recipe-thumbnail {
+    width: 100%;           /* Vie koko reseptiruudun leveyden */
+    max-width: none;       /* Poista aiempi maksimileveys */
+    max-height: 100px;     /* Voit kasvattaa korkeutta tarvittaessa */
+    border-radius: 4px;
+    border: 1px solid #eee;
+    object-fit: cover;     /* Säilyttää kuvasuhteen ja täyttää, voi rajata */
+    display: block;        /* Varmistaa että vie koko rivin */
+    margin: 0 auto;        /* Keskittää kuvan, jos haluat */
+}
+
+/* Vanha .delete-button (jos sitä käytettiin suoraan tekstinäppäimelle) voidaan poistaa, jos ikonit korvaavat sen */
+/*
 .delete-button {
     background-color: #dc3545;
     color: white;
@@ -86,9 +140,10 @@
     cursor: pointer;
     font-size: 0.85rem;
     transition: background-color 0.2s ease;
-    margin-left: auto; /* Push to the right */
+    margin-left: auto; 
 }
 
 .delete-button:hover {
     background-color: #c82333;
 }
+*/

@@ -1,13 +1,10 @@
 // src/components/RecipeList.js
-// Tämä komponentti hakee reseptit, näyttää ne, mahdollistaa valinnan ja poiston.
-
 import React, { useState, useEffect } from 'react';
 import { db, collection, query, onSnapshot, deleteDoc, doc } from '../firebase';
 import ConfirmModal from './ConfirmModal';
-
-// Oletetaan, että SVG-tiedostosi ovat src/assets/icons/ -kansiossa
 import { ReactComponent as EditIcon } from '../assets/icons/edit-icon.svg';
 import { ReactComponent as DeleteIcon } from '../assets/icons/delete-icon.svg';
+import './RecipeList.css'; // Oletetaan, että tyylit on määritelty tässä tiedostossa
 
 const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes = [] }) => {
   const [recipes, setRecipes] = useState([]);
@@ -42,8 +39,10 @@ const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes
     if (recipeToDelete) {
       try {
         await deleteDoc(doc(db, 'recipes', recipeToDelete.id));
+        // Tässä voisi lisätä myös kuvan poiston Cloudinarysta, jos tarpeen.
+        // Se vaatisi backend-logiikkaa tai allekirjoitettuja poistopyyntöjä.
       } catch (error) {
-        // Virheenkäsittely
+        console.error("Virhe reseptin poistossa:", error);
       } finally {
         setShowConfirmModal(false);
         setRecipeToDelete(null);
@@ -73,15 +72,15 @@ const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes
         <ul className="recipe-items">
           {filteredRecipes.map((recipe) => (
             <li key={recipe.id} className="recipe-item">
-              <div className="recipe-header"> {/* Poistettu inline-tyylit, hallitaan CSS:llä */}
+              <div className="recipe-header">
                 <input
                   type="checkbox"
                   checked={selectedRecipes.includes(recipe.id)}
                   onChange={() => handleCheckboxChange(recipe.id)}
-                  className="recipe-checkbox" // Lisätty luokka helppoon kohdistukseen
+                  className="recipe-checkbox"
                   aria-label="Valitse resepti"
                 />
-                <span className="recipe-name">{recipe.nimi}</span> {/* Lisätty luokka ja siirretty expand-btn:n jälkeen */}
+                <span className="recipe-name">{recipe.nimi}</span>
                 <button
                   className="expand-btn"
                   aria-label={expandedId === recipe.id ? "Sulje tiedot" : "Näytä tiedot"}
@@ -90,9 +89,15 @@ const RecipeList = ({ onEditRecipe, searchTerm, onSelectRecipes, selectedRecipes
                   {expandedId === recipe.id ? "−" : "+"}
                 </button>
               </div>
+              {/* Reseptikuva näytetään tässä, nimen alapuolella */}
+              {recipe.imageUrl && (
+                <div className="recipe-thumbnail-container">
+                  <img src={recipe.imageUrl} alt={recipe.nimi} className="recipe-thumbnail" />
+                </div>
+              )}
               {expandedId === recipe.id && (
                 <div className="recipe-details">
-                  <div className="action-buttons-container"> {/* Poistettu inline-tyyli, hallitaan CSS:llä */}
+                  <div className="action-buttons-container">
                     <button
                       className="edit-icon-button"
                       aria-label="Muokkaa"

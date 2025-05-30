@@ -1,6 +1,12 @@
 // src/components/RecipeForm.js
 import React, { useState, useRef, useEffect } from 'react';
 import { db, collection, addDoc } from '../firebase'; // Varmista, että firebase.js on oikein määritelty
+import './RecipeForm.css';
+
+
+// Cloudinary tiedot ympäristömuuttujista
+const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
 
 const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData }) => {
   const [name, setName] = useState('');
@@ -8,6 +14,10 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
   const [instructions, setInstructions] = useState('');
   const [errors, setErrors] = useState({});
   const nameInputRef = useRef(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [imageUrl, setImageUrl] = useState(''); // Tila Cloudinary URL:lle
 
   useEffect(() => {
     if (nameInputRef.current) {
@@ -21,23 +31,88 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       const initialIngredients = initialData.ainesosat && Array.isArray(initialData.ainesosat) && initialData.ainesosat.length > 0
         ? initialData.ainesosat.map(ing => ({
             name: ing.name || '',
-            amount: ing.amount === '' || ing.amount === null || ing.amount === undefined ? '' : String(ing.amount), // Varmista merkkijono tai tyhjä
+            amount: ing.amount === '' || ing.amount === null || ing.amount === undefined ? '' : String(ing.amount),
             unit: ing.unit || ''
           }))
         : [{ name: '', amount: '', unit: '' }];
       setIngredients(initialIngredients);
       setInstructions(initialData.ohjeet || '');
+      // Jos initialDatassa on imageUrl (esim. reseptin tuonnista), näytä se
+      if (initialData.imageUrl) {
+        setImageUrl(initialData.imageUrl);
+        setImagePreview(initialData.imageUrl);
+      } else {
+        setImageUrl('');
+        setImagePreview('');
+      }
+      setImageFile(null);
       setErrors({});
 
       if (nameInputRef.current) {
         nameInputRef.current.focus();
       }
 
+      // Huom: onClearInitialData kutsutaan nyt vain, jos se on annettu.
+      // Jos haluat aina tyhjentää initialDatan käytön jälkeen, voit poistaa ehtolausekkeen.
       if (onClearInitialData) {
         onClearInitialData();
       }
     }
   }, [initialData, onClearInitialData]);
+
+
+  const handleImageChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setImageUrl(''); // Nollaa aiempi Cloudinary URL, jos uusi kuva valitaan
+    } else {
+      setImageFile(null);
+      setImagePreview('');
+    }
+  };
+
+  const uploadImageToCloudinary = async () => {
+    if (!imageFile) return null; // Palauta null, jos kuvaa ei ole valittu
+
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+      console.error("Cloudinaryn asetukset puuttuvat. Tarkista .env tiedosto.");
+      showToast("Kuvanlatauspalvelun asetukset puuttuvat.", "error");
+      return null;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', imageFile);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    try {
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.secure_url) {
+        showToast("Kuva ladattu onnistuneesti!", "success");
+        return data.secure_url;
+      } else {
+        console.error('Virhe kuvan lataamisessa Cloudinaryyn:', data);
+        showToast("Kuvan lataaminen epäonnistui.", "error");
+        return null;
+      }
+    } catch (error) {
+      console.error('Virhe kuvan lataamisessa Cloudinaryyn:', error);
+      showToast("Kuvan lataaminen epäonnistui.", "error");
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
 
   const handleIngredientChange = (index, event) => {
@@ -51,7 +126,6 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     if (errors[`${errorKeyBase}-amount`] && event.target.name === 'amount') {
       setErrors(prev => ({ ...prev, [`${errorKeyBase}-amount`]: undefined }));
     }
-    // Yksikön virhettä ei enää tarvitse erikseen poistaa tässä, koska se on valinnainen
   };
 
   const addIngredientField = () => {
@@ -60,11 +134,8 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
 
   const removeIngredientField = (index) => {
     const newIngredients = ingredients.filter((_, i) => i !== index);
-    // Jos poistetaan viimeinen rivi ja se oli tyhjä, älä lisää uutta tyhjää automaattisesti.
-    // RecipeForm antaa lisätä uuden tarvittaessa.
-    // Jos rivejä on jäljellä, käytä niitä. Jos ei, jätä tyhjäksi (tai RecipeForm voi päättää lisätä tyhjän myöhemmin jos tarpeen)
     if (newIngredients.length === 0 && ingredients.length === 1) {
-        setIngredients([{ name: '', amount: '', unit: '' }]); // Säilytä vähintään yksi tyhjä rivi, jos kaikki poistetaan
+        setIngredients([{ name: '', amount: '', unit: '' }]);
     } else {
         setIngredients(newIngredients);
     }
@@ -74,7 +145,6 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       const updatedErrors = { ...prev };
       delete updatedErrors[`${errorKeyBase}-name`];
       delete updatedErrors[`${errorKeyBase}-amount`];
-      // Yksikön virhettä ei tarvitse erikseen käsitellä tässä, koska se on valinnainen
       return updatedErrors;
     });
   };
@@ -91,15 +161,12 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
     ingredients.forEach((ing, index) => {
       const nameTrimmed = ing.name.trim();
       const amountStrTrimmed = String(ing.amount).trim();
-      // Yksikköä ei enää validoida pakollisena, joten unitTrimmed ei ole osa ehtoa alla
 
-      // Jos jokin kentistä (nimi, määrä, yksikkö) on täytetty, nimi on pakollinen.
       if (nameTrimmed || amountStrTrimmed || ing.unit.trim()) {
         if (nameTrimmed === '') {
           newErrors[`ingredient-${index}-name`] = 'Ainesosan nimi on pakollinen, jos rivillä on muita tietoja.';
           isValid = false;
         }
-        // Määrän validointi (jos annettu)
         if (amountStrTrimmed !== '') {
           const parsedAmount = Number(String(ing.amount).replace(',', '.'));
           if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -107,22 +174,14 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
             isValid = false;
           }
         }
-        // Yksikkö on nyt valinnainen, joten sille ei ole erillistä virhettä tässä, ellei haluta erityistä logiikkaa
       }
     });
     
-    // Varmistetaan, että vähintään yksi ainesosa on lisätty, jos lomaketta yritetään lähettää aktiivisilla ainesosilla
     const activeIngredients = ingredients.filter(ing => ing.name.trim() || String(ing.amount).trim() || ing.unit.trim());
-    if (activeIngredients.length === 0 && ingredients.length > 0 && ingredients.some(ing => ing.name || ing.amount || ing.unit)) {
-        // Tämä ehto on hieman monimutkainen, tarkoituksena on estää tyhjän reseptin lähetys,
-        // mutta sallia lomakkeen alustus tyhjällä rivillä.
-        // Jos kaikki rivit ovat täysin tyhjiä, ei pitäisi olla virhettä, mutta submit-nappi voi olla disabloitu.
-    } else if (activeIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
-        // Jos nimi tai ohjeet on annettu, mutta ei yhtään aktiivista ainesosaa
+    if (activeIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
         newErrors.ingredients = 'Lisää vähintään yksi ainesosa.';
         isValid = false;
     }
-
 
     setErrors(newErrors);
     return isValid;
@@ -136,27 +195,39 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       return;
     }
 
+    let finalImageUrl = imageUrl; // Käytä olemassa olevaa URLia, jos kuvaa ei ladata uudelleen (esim. tuodusta datasta)
+
+    if (imageFile) { // Jos uusi kuvatiedosto on valittu, yritä ladata se
+        const uploadedUrl = await uploadImageToCloudinary();
+        if (uploadedUrl) {
+            finalImageUrl = uploadedUrl;
+        } else if (!finalImageUrl) { // Jos lataus epäonnistui EIKÄ ole aiempaa URLia
+            showToast("Kuvan lataus epäonnistui. Resepti tallennetaan ilman kuvaa.", "warning");
+            // Ei keskeytetä reseptin tallennusta, mutta kuva puuttuu
+        }
+    }
+
+
     const processedIngredients = ingredients
-      .filter(ing => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== '') // Suodata pois täysin tyhjät rivit
+      .filter(ing => ing.name.trim() !== '' || String(ing.amount).trim() !== '' || ing.unit.trim() !== '')
       .map(ing => {
         const amountStr = String(ing.amount).trim().replace(',', '.');
         let finalAmount;
         if (amountStr === '') {
-          finalAmount = ''; // Jätä tyhjäksi, jos määrää ei ole annettu
+          finalAmount = '';
         } else {
           const parsed = parseFloat(amountStr);
-          finalAmount = isNaN(parsed) ? '' : parsed; // Tallenna numeerisena tai tyhjänä
+          finalAmount = isNaN(parsed) ? '' : parsed;
         }
         
         return {
           name: ing.name.trim(),
           amount: finalAmount,
-          unit: ing.unit.trim(), // Yksikkö voi olla tyhjä
+          unit: ing.unit.trim(),
         };
       })
-      .filter(ing => ing.name.trim() !== ''); // Varmista vielä, että ainesosalla on nimi
+      .filter(ing => ing.name.trim() !== '');
 
-    // Jos ainesosia ei ole yhtään (tai yhtään nimellistä ainesosaa), mutta lomake on muuten täytetty, näytä virhe.
     if (processedIngredients.length === 0 && (name.trim() !== '' || instructions.trim() !== '')) {
          showToast("Lisää vähintään yksi kelvollinen ainesosa (nimi vaaditaan).", "error");
          setErrors(prev => ({...prev, ingredients: "Lisää vähintään yksi ainesosa, jolla on nimi."}));
@@ -167,7 +238,8 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       nimi: name.trim(),
       ainesosat: processedIngredients,
       ohjeet: instructions.trim() ? instructions.trim().split('\n').filter(line => line.trim() !== '') : [],
-      luotu: new Date().toISOString()
+      luotu: new Date().toISOString(),
+      imageUrl: finalImageUrl || null, // Lisää kuvan URL, tai null jos sitä ei ole
     };
 
     try {
@@ -175,10 +247,14 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       setName('');
       setIngredients([{ name: '', amount: '', unit: '' }]);
       setInstructions('');
+      setImageFile(null);
+      setImagePreview('');
+      setImageUrl('');
       setErrors({});
       if (onRecipeAdded) {
         onRecipeAdded();
       }
+      showToast("Resepti lisätty onnistuneesti!", "success");
     } catch (error) {
       console.error('Virhe reseptin lisäämisessä: ', error);
       showToast("Reseptin lisääminen epäonnistui. Yritä uudelleen.", "error");
@@ -187,15 +263,13 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
 
   const isFormSubmittable =
     name.trim() !== '' &&
-    // Vähintään yksi ainesosa, jolla on nimi
     ingredients.some(ing => ing.name.trim() !== '') &&
-    // Kaikki annetut määrät ovat validia positiivisia lukuja
     ingredients.every(ing => {
         const amountStr = String(ing.amount).trim();
-        if (amountStr === '') return true; // Tyhjä määrä on ok, jos nimi on annettu
+        if (amountStr === '') return true;
         const parsedAmount = Number(amountStr.replace(',', '.'));
         return !isNaN(parsedAmount) && parsedAmount > 0;
-    });
+    }) && !isUploading;
 
 
   return (
@@ -217,6 +291,26 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
           {errors.name && <p className="validation-error-message">{errors.name}</p>}
         </div>
 
+        {/* Reseptikuvan lisäys */}
+        <div className="form-group">
+          <label htmlFor="recipeImage">Reseptikuva (valinnainen):</label>
+          <input
+            type="file"
+            id="recipeImage"
+            accept="image/*"
+            onChange={handleImageChange}
+            aria-label="Lataa reseptikuva"
+            disabled={isUploading}
+          />
+          {isUploading && <p>Ladataan kuvaa...</p>}
+          {imagePreview && (
+            <div className="image-preview-container">
+              <img src={imagePreview} alt="Reseptin esikatselu" className="image-preview" />
+            </div>
+          )}
+        </div>
+
+
         <h3>Ainesosat:</h3>
         {ingredients.map((ingredient, index) => (
           <div key={index} className="ingredient-input-group">
@@ -230,7 +324,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
               className={errors[`ingredient-${index}-name`] ? 'input-error' : ''}
             />
             <input
-              type="text" // Muutettu number -> text, jotta tyhjä arvo on helpompi käsitellä ja sallii pilkun
+              type="text"
               name="amount"
               placeholder="Määrä (valinnainen)"
               value={ingredient.amount}
@@ -241,13 +335,12 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
             <input
               type="text"
               name="unit"
-              placeholder="Yksikkö (esim. 'dl')" // Placeholder päivitetty
+              placeholder="Yksikkö (esim. 'dl')"
               value={ingredient.unit}
               onChange={(e) => handleIngredientChange(index, e)}
               aria-label={`Ainesosan ${index + 1} yksikkö`}
-              // Ei enää 'required' eikä error-luokkaa yksikölle tässä, koska se on valinnainen
             />
-            {ingredients.length > 0 && ( // Näytä poista-nappi aina jos rivejä on (tai > 1 jos halutaan aina väh. 1 rivi)
+            {ingredients.length > 0 && (
               <button type="button" onClick={() => removeIngredientField(index)} className="remove-ingredient-button">
                 Poista
               </button>
@@ -258,7 +351,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
         ))}
         {errors.ingredients && <p className="validation-error-message">{errors.ingredients}</p>}
         <button type="button" onClick={addIngredientField} className="add-ingredient-button">
-          + Uusi ainesosa 
+          + Uusi ainesosa
         </button>
 
         <div className="form-group">
@@ -273,8 +366,8 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
           ></textarea>
         </div>
 
-        <button type="submit" className="submit-button" disabled={!isFormSubmittable}>
-            {initialData && initialData.nimi ? 'Tallenna muutokset tuotuun reseptiin' : 'Lisää resepti'}
+        <button type="submit" className="submit-button" disabled={!isFormSubmittable || isUploading}>
+            {isUploading ? 'Ladataan...' : (initialData && initialData.nimi ? 'Tallenna muutokset tuotuun reseptiin' : 'Lisää resepti')}
         </button>
       </form>
     </div>
