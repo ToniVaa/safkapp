@@ -122,7 +122,7 @@
     width: 100%;           /* Vie koko reseptiruudun leveyden */
     max-width: none;       /* Poista aiempi maksimileveys */
     max-height: 100px;     /* Voit kasvattaa korkeutta tarvittaessa */
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid #eee;
     object-fit: cover;     /* Säilyttää kuvasuhteen ja täyttää, voi rajata */
     display: block;        /* Varmistaa että vie koko rivin */
