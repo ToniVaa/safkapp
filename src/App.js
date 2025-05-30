@@ -4,14 +4,15 @@ import RecipeForm from "./components/RecipeForm";
 import RecipeList from "./components/RecipeList";
 import ShoppingList from "./components/ShoppingList";
 import RecipeEditForm from "./components/RecipeEditForm";
-import RecipeImporter from "./components/RecipeImporter"; // UUSI: Tuo RecipeImporter
+import RecipeImporter from "./components/RecipeImporter";
 import Login from "./components/Login";
 import Toast from "./components/Toast";
+import NewRecipeModal from "./components/NewRecipeModal"; // UUSI: Tuodaan uusi modaalikomponentti
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
 import { collection, query, onSnapshot, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
-import "./styles.css"; // Olemassa oleva globaali tyylitiedosto
+import "./styles.css";
 
 function App() {
   const [selectedRecipes, setSelectedRecipes] = useState([]);
@@ -25,7 +26,8 @@ function App() {
   const [allRecipes, setAllRecipes] = useState([]);
   const [allowedEmails, setAllowedEmails] = useState([]);
   const [isLoadingAllowedEmails, setIsLoadingAllowedEmails] = useState(true);
-  const [parsedRecipeForForm, setParsedRecipeForForm] = useState(null); // UUSI: Tila jäsennetylle reseptille
+  const [parsedRecipeForForm, setParsedRecipeForForm] = useState(null);
+  const [showNewRecipeModal, setShowNewRecipeModal] = useState(false); // UUSI: Tila modaalille
 
   const showToast = useCallback((message, type) => {
     setToast({ message, type });
@@ -96,30 +98,44 @@ function App() {
 
   const handleEditRecipe = (recipeId) => {
     setEditingRecipeId(recipeId);
-    setActiveTab("list");
+    setActiveTab("list"); // Varmistetaan, että muokkausnäkymä avautuu oikein
   };
 
   const handleCloseEdit = useCallback(() => {
     setEditingRecipeId(null);
     setActiveTab("list");
-    showToast("Resepti päivitetty onnistuneesti!", "success");
-  }, [showToast]);
+    // Toast-viesti tulee jo RecipeEditFormista onnistuneen tallennuksen jälkeen
+  }, []);
 
   const handleRecipeAdded = useCallback(() => {
     setActiveTab("list");
-    setParsedRecipeForForm(null); // Nollaa esitäytetty data, kun resepti on lisätty
-    showToast("Resepti lisätty onnistuneesti!", "success");
-  }, [showToast]);
+    setParsedRecipeForForm(null);
+    // Toast-viesti tulee jo RecipeFormista
+  }, []);
 
   const handleRecipeParsed = useCallback((parsedData) => {
     setParsedRecipeForForm(parsedData);
-    setActiveTab("form");
+    setActiveTab("form"); // Vaihda suoraan formiin
     setEditingRecipeId(null);
   }, []);
 
   const handleClearParsedData = useCallback(() => {
     setParsedRecipeForForm(null);
   }, []);
+
+  // UUDET KÄSITTELIJÄT MODAALILLE
+  const handleOpenImportTab = () => {
+    setActiveTab('import');
+    setEditingRecipeId(null);
+    setShowNewRecipeModal(false);
+  };
+
+  const handleOpenFormTab = () => {
+    handleClearParsedData(); // Tyhjennä mahdolliset aiemmat tuontitiedot
+    setActiveTab('form');
+    setEditingRecipeId(null);
+    setShowNewRecipeModal(false);
+  };
 
 
   if (!user) {
@@ -163,7 +179,7 @@ function App() {
     <div className="App">
       <header className="App-header">
         <img
-          src="/safkapp_logo.png" // Varmista, että logo on public-kansiossa
+          src="/safkapp_logo.png"
           alt="SafkApp"
           className="app-logo"
         />
@@ -171,7 +187,7 @@ function App() {
 
       <nav className="App-nav">
         <button
-          className={activeTab === "list" && !editingRecipeId ? "active" : ""}
+          className={(activeTab === "list" && !editingRecipeId) ? "active" : ""}
           onClick={() => {
             setActiveTab("list");
             setEditingRecipeId(null);
@@ -179,26 +195,14 @@ function App() {
         >
           Reseptit
         </button>
-        {/* UUSI: Tuo resepti -välilehti */}
+        {/* UUSI "Uusi resepti" -nappi */}
         <button
-          className={activeTab === "import" ? "active" : ""}
           onClick={() => {
-            setActiveTab("import");
-            setEditingRecipeId(null);
+            setEditingRecipeId(null); // Sulje editointi/luontinäkymä jos auki
+            setShowNewRecipeModal(true);
           }}
         >
-          Tuo resepti
-        </button>
-        <button
-          className={activeTab === "form" ? "active" : ""}
-          onClick={() => {
-            setActiveTab("form");
-            setEditingRecipeId(null);
-            // Jos haluat, että "Luo resepti" -nappi tyhjentää aina tuodun datan:
-            // handleClearParsedData();
-          }}
-        >
-          Luo resepti
+          Uusi resepti
         </button>
         <button
           className={activeTab === "shopping" ? "active" : ""}
@@ -250,10 +254,10 @@ function App() {
                 showToast={showToast}
               />
             )}
-            {activeTab === "import" && (
+            {activeTab === "import" && ( /* Näytetään kun import-tab aktiivinen */
               <RecipeImporter onRecipeParsed={handleRecipeParsed} showToast={showToast} />
             )}
-            {activeTab === "form" && (
+            {activeTab === "form" && ( /* Näytetään kun form-tab aktiivinen */
               <RecipeForm
                 onRecipeAdded={handleRecipeAdded}
                 showToast={showToast}
@@ -269,6 +273,15 @@ function App() {
           </>
         )}
       </main>
+
+      {/* UUDEN MODAALIN RENDERÖINTI */}
+      {showNewRecipeModal && (
+        <NewRecipeModal
+          onImport={handleOpenImportTab}
+          onCreate={handleOpenFormTab}
+          onCancel={() => setShowNewRecipeModal(false)}
+        />
+      )}
 
       {showLogout && (
         <button

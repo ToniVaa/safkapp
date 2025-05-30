@@ -24,7 +24,7 @@ body {
 .App-header {
   background: #444444;
   color: #fff;
-  padding: 2rem 1 1rem 0;
+  padding: 2rem 1rem 1rem 0; /* Korjattu padding, jotta on 4 arvoa tai 2 */
   text-align: center;
   border-radius: 0 0 24px 24px;
   margin-bottom: 2rem;
@@ -109,7 +109,7 @@ body {
 .add-selected-button-fixed {
   background: #758a7f;
   color: #fff;
-  border: 2px solid #84a594; 
+  border: 2px solid #84a594;
   border-radius: 8px;
   padding: 0.7rem 1.5rem;
   font-size: 1.1rem;
@@ -119,7 +119,7 @@ body {
 }
 
 .add-selected-button-fixed:hover {
-  background: #8fa097; 
+  background: #8fa097;
   color: #fff;
 }
 
@@ -132,11 +132,10 @@ body {
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  /* text-align: left; periytyy .App-main kautta, jos tämä on sen sisällä */
 }
 
 .recipe-form h2 {
-  text-align: center; /* Lomakkeen otsikko voi olla keskitetty */
+  text-align: center;
   color: #333;
   margin-bottom: 20px;
 }
@@ -154,6 +153,7 @@ body {
 
 .form-group input[type="text"],
 .form-group input[type="number"],
+.form-group input[type="file"],
 .form-group textarea {
   width: calc(100% - 20px);
   padding: 10px;
@@ -163,13 +163,31 @@ body {
   box-sizing: border-box;
 }
 
+.form-group input[type="file"] {
+    padding: 5px;
+}
+
 .form-group textarea {
   resize: vertical;
 }
 
+.image-preview-container {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
 .ingredient-input-group {
   display: flex;
-  flex-wrap: wrap; /* Salli rivinvaihto pienemmillä näytöillä */
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 10px;
   align-items: center;
@@ -177,7 +195,7 @@ body {
 
 .ingredient-input-group input {
   flex: 1;
-  min-width: 80px; /* Minimi leveys input-kentille */
+  min-width: 80px;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -207,9 +225,10 @@ body {
   cursor: pointer;
   font-size: 1rem;
   margin-top: 10px;
-  margin: 20px auto 0;    /* Keskittää napin vaakasuunnassa ja lisää yläväliä */
+  margin: 20px auto 0;
   display: block;
-  width: 25%;
+  width: auto; /* Muutettu auto-leveydeksi, jotta ei ole 100% */
+  min-width: 150px; /* Esimerkki minimileveydestä */
   box-sizing: border-box;
   transition: background-color 0.2s ease;
 }
@@ -242,15 +261,15 @@ body {
 }
 
 
-.cancel-button {
+.cancel-button { /* Tämä on yleinen cancel-button RecipeForm ja RecipeEditForm -komponenteille */
   background-color: #6c757d;
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 12px 20px; /* Yhtenäistetty submit-buttonin kanssa */
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1.1rem;
-  margin-top: 10px; /* Pieni väli submit-napin ja tämän välillä */
+  font-size: 1.1rem; /* Yhtenäistetty submit-buttonin kanssa */
+  margin-top: 10px;
   width: 100%;
   box-sizing: border-box;
   transition: background-color 0.2s ease;
@@ -268,7 +287,7 @@ body {
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
-  text-align: center; /* Nämä viestit voivat olla keskitettyjä */
+  text-align: center;
 }
 
 .error-message {
@@ -278,22 +297,21 @@ body {
   padding: 10px;
   border-radius: 4px;
   margin-top: 15px;
-  text-align: center; /* Nämä viestit voivat olla keskitettyjä */
+  text-align: center;
 }
 
 /* RecipeList styles */
 .recipe-list-container {
-  max-width: 800px; /* Voi olla sama tai eri kuin App-main, riippuen halutusta ulkoasusta */
-  margin: 20px auto; /* Keskittää tämän lohkon App-mainin sisällä, jos App-main on leveämpi */
-  padding: 0; /* Nollataan App-mainin padding, jos ei haluta tuplapaddingia */
-  background-color: #fff; /* Säilytetään tai poistetaan, jos App-mainin tausta riittää */
-  border-radius: 0; /* Nollataan, jos halutaan, että App-mainin pyöristys näkyy */
-  box-shadow: none; /* Nollataan, jos halutaan, että App-mainin varjo näkyy */
-  /* text-align: left; periytyy .App-main kautta */
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 0;
+  background-color: #fff;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .recipe-list-container h2 {
-  text-align: center; /* Otsikko voi olla keskitetty */
+  text-align: center;
   color: #333;
   margin-bottom: 20px;
 }
@@ -309,7 +327,7 @@ body {
   border-radius: 12px;
   margin-bottom: 1rem;
   padding: 1rem;
-  min-height: calc(4.8rem - 2rem); /* Laskenta voi vaatia tarkistusta */
+  min-height: calc(4.8rem - 2rem);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
@@ -341,10 +359,27 @@ body {
   font-size: 1.6rem;
   color: #2c3e50;
   flex-grow: 1;
-  text-align: left; /* Varmistetaan, että reseptin nimi on vasemmalla */
+  text-align: left;
   margin-right: 0.75rem;
   line-height: 1.3;
 }
+
+.recipe-thumbnail-container {
+    margin-top: 8px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.recipe-thumbnail {
+    width: 100%;
+    max-height: 100px; /* Hieman isompi kuin RecipeFormissa */
+    border-radius: 8px;
+    border: 1px solid #eee;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto;
+}
+
 
 .expand-btn {
   background: none;
@@ -372,8 +407,8 @@ body {
 
 .recipe-details {
   margin-top: 0.75rem;
-  text-align: left; /* Varmistetaan, että yksityiskohdat ovat vasemmalla */
-  padding-left: 5px; /* Pieni sisennys */
+  text-align: left;
+  padding-left: 5px;
   border-top: 1px solid #eee;
   padding-top: 0.75rem;
 }
@@ -389,7 +424,7 @@ body {
 .recipe-details ul,
 .recipe-details ol {
   list-style-position: inside;
-  padding-left: 0; /* Poistetaan oletussisennys, koska list-style-position on inside */
+  padding-left: 0;
   margin-bottom: 0.75rem;
 }
 
@@ -402,7 +437,7 @@ body {
 
 .action-buttons-container {
   display: flex;
-  justify-content: flex-end; /* Painikkeet oikealle */
+  justify-content: flex-end;
   gap: 0.75rem;
   margin-bottom: 1rem;
   flex-shrink: 0;
@@ -416,12 +451,12 @@ body {
   padding: 5px;
   transition: opacity 0.2s ease, transform 0.2s ease;
   line-height: 1;
-  border-radius: 50%; /* Pyöreät napit */
+  border-radius: 50%;
 }
 
 .action-buttons-container button:hover {
   opacity: 0.8;
-  background-color: #f0f3f5; /* Kevyt taustaväri hoverille */
+  background-color: #f0f3f5;
   transform: scale(1.1);
 }
 
@@ -432,15 +467,15 @@ body {
 }
 
 .edit-icon-button svg {
-  fill: #444444; /* Sininen muokkausikoni */
+  fill: #444444;
 }
 
 .delete-icon-button svg {
-  fill: #e44d26; /* Punainen poistoikoni */
+  fill: #e44d26;
 }
 
 
-/* ShoppingList.css -tyylit (nämä ovat nyt styles.css:ssä, ShoppingList.css voidaan poistaa tai tyhjentää) */
+/* ShoppingList.css -tyylit */
 .shopping-list-container {
   max-width: 600px;
   margin: 20px auto;
@@ -448,22 +483,19 @@ body {
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  /* text-align: left; periytyy .App-main kautta */
 }
 
 .shopping-list-container h2 {
-  text-align: center; /* Otsikko voi olla keskitetty */
+  text-align: center;
   color: #333;
   margin-bottom: 20px;
 }
 
-/* Tämä pitää "Valitse reseptejä..." -tyyppiset viestit keskitettyinä */
 .shopping-list-container p:not(.shopping-list-description) {
   text-align: center;
   color: #666;
   margin-bottom: 15px;
 }
-/* Tämä tasaa "Ostoslista valituista resepteistä:" -tekstin vasemmalle */
 .shopping-list-container p.shopping-list-description {
   text-align: left;
   color: #666;
@@ -472,20 +504,18 @@ body {
 
 
 .shopping-items {
-  list-style: none; /* Poistaa oletuslistamerkit */
-  padding-left: 0;  /* Poistaa oletussisennyksen */
-  /* text-align: left; periytyy, mutta voidaan varmistaa */
+  list-style: none;
+  padding-left: 0;
 }
 
 .shopping-items li {
   margin-bottom: 8px;
   font-size: 1.1rem;
   color: #444;
-  display: flex; /* Lisätty checkboxin ja tekstin linjaamiseksi */
-  align-items: center; /* Lisätty checkboxin ja tekstin linjaamiseksi */
+  display: flex;
+  align-items: center;
 }
 
-/* Lisätty tyylit checkboxille ja yliviivaukselle (jos haluat siirtää ne tänne ShoppingList.css:stä) */
 .shopping-items li.checked .shopping-item-name {
   text-decoration: line-through;
   color: #888;
@@ -523,7 +553,7 @@ body {
   padding: 30px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  text-align: center; /* Modalin sisältö voi olla keskitetty */
+  text-align: center;
   max-width: 400px;
   width: 90%;
 }
@@ -534,26 +564,27 @@ body {
 }
 
 .modal-content p {
-  margin-bottom: 20px;
+  margin-bottom: 20px; /* Oletus, voidaan ylikirjoittaa */
   color: #555;
 }
 
 .modal-buttons {
   display: flex;
   justify-content: center;
-  gap: 15px;
+  gap: 15px; /* Oletus, voidaan ylikirjoittaa */
 }
 
-.modal-buttons button {
+.modal-buttons button { /* Yleinen tyyli modaalin napeille */
   padding: 10px 20px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-size: 1rem;
   transition: background-color 0.2s ease;
-  flex: 1;
+  flex: 1; /* Oletuksena napit jakavat tilan, jos flex-direction: row */
 }
 
+/* ConfirmModalin napit */
 .modal-buttons .confirm-button {
   background-color: #dc3545;
   color: white;
@@ -563,7 +594,7 @@ body {
   background-color: #c82333;
 }
 
-.modal-buttons .cancel-button {
+.modal-buttons .cancel-button { /* Tämä on geneerinen cancel-button modaaleille */
   background-color: #6c757d;
   color: white;
 }
@@ -572,46 +603,103 @@ body {
   background-color: #5a6268;
 }
 
+/* src/styles.css - lisäykset/muutokset NewRecipeModal-komponentille */
+
+.modal-buttons.new-recipe-options {
+  display: flex;
+  flex-direction: column; /* Napit allekkain */
+  gap: 10px; /* Väli nappien välissä */
+}
+
+/* Uudet tyylit "Tuo tekstitiedostosta" ja "Luo tyhjästä" -napeille,
+   jotta ne vastaavat .App-nav button -tyyliä */
+.modal-buttons.new-recipe-options .action-button-primary {
+  background: #758a7f;         /* Navigaationapin taustaväri */
+  color: #ffffff;              /* Navigaationapin tekstin väri */
+  border: 2px solid #84a594;   /* Navigaationapin reunus */
+  border-radius: 8px;          /* Navigaationapin pyöristys */
+  padding: 0.7rem 1.5rem;      /* Navigaationapin padding */
+  font-size: 1.1rem;           /* Navigaationapin fonttikoko */
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  width: 100%;                 /* Täysleveä modaalin sisällä */
+  box-sizing: border-box;
+  text-align: center;          /* Varmistetaan tekstin keskitys */
+}
+
+.modal-buttons.new-recipe-options .action-button-primary:hover {
+  background: #92b8a4;         /* Navigaationapin hover-taustaväri */
+  color: #fff;                  /* Navigaationapin hover-tekstin väri */
+}
+
+/* Peruuta-napin tyyli NewRecipeModalissa (käyttää .cancel-button luokkaa HTML:ssä) */
+.modal-buttons.new-recipe-options .cancel-button {
+  background-color: #6c757d;   /* Oletus cancel-napin väri */
+  color: white;
+  border: none;                /* Ei samanlaista reunusta kuin App-nav napeilla */
+  padding: 0.7rem 1.5rem;      /* Yhtenäistetty koko muiden kanssa */
+  font-size: 1.1rem;           /* Yhtenäistetty koko muiden kanssa */
+  border-radius: 8px;          /* Yhtenäistetty pyöristys muiden kanssa */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  margin-top: 5px;
+}
+
+.modal-buttons.new-recipe-options .cancel-button:hover {
+  background-color: #5a6268;
+}
+
+
 /* Responsiivuus */
 @media (max-width: 768px) {
   .App-nav {
     flex-direction: column;
-    padding: 10px; /* Vähennetään paddingia mobiilissa navigaatiolle */
+    padding: 10px;
   }
   .App-nav button {
     margin: 5px 0;
-    width: 100%; /* Napit täysleveiksi */
+    width: 100%;
   }
   .fixed-controls {
     flex-direction: column;
     padding: 10px;
-    right: 0; /* Täysleveäksi */
-    left: 0;  /* Täysleveäksi */
-    width: auto; /* Annetaan leveyden määräytyä paddingin ja parentin mukaan */
-    max-width: unset; /* Poistetaan mahdollinen maksimileveys */
-    top: 0; /* Kiinnitetään yläreunaan */
+    right: 0;
+    left: 0;
+    width: auto;
+    max-width: unset;
+    top: 0;
     gap: 5px;
   }
   .search-input-fixed,
   .add-selected-button-fixed {
     width: 100%;
-    margin-right: 0; /* Poistetaan oikea marginaali */
+    margin-right: 0;
   }
   .ingredient-input-group {
-    flex-direction: column; /* Ainesosakentät allekkain */
-    align-items: stretch; /* Venytetään lapset täyttämään containerin leveys */
+    flex-direction: column;
+    align-items: stretch;
   }
   .ingredient-input-group input {
-    width: 100%; /* Kentät täysleveiksi */
-    min-width: unset; /* Poistetaan minimileveys */
+    width: 100%;
+    min-width: unset;
   }
   .remove-ingredient-button {
-    width: 100%; /* Poista-nappi täysleveäksi */
-    margin-left: 0; /* Poistetaan vasen marginaali */
+    width: 100%;
+    margin-left: 0;
   }
+  /* Yleinen .modal-buttons sääntö, joka koskee kaikkia modaaleja kapeilla näytöillä */
   .modal-buttons {
-    flex-direction: column; /* Modalin napit allekkain */
+    flex-direction: column;
+    gap: 10px; /* Yhtenäinen väli myös ConfirmModalin napeille mobiilissa */
   }
+  /* Varmistetaan, että flex:1 ei vaikuta, kun suunta on column */
+  .modal-buttons button {
+    flex: none;
+  }
+
 
   .recipe-name {
     font-size: 1.3rem;
@@ -629,22 +717,22 @@ body {
 }
 
 @media (max-width: 600px) {
-  .mobile-top-bar { /* Uudet tyylit mobiilin yläpalkille */
+  .mobile-top-bar {
     position: fixed;
-    top: 16px; /* Pieni väli yläreunasta */
-    left: 5vw; /* Keskitys */
-    width: 90vw; /* Leveys */
+    top: 16px;
+    left: 5vw;
+    width: 90vw;
     display: flex;
     gap: 8px;
-    z-index: 2000; /* Varmistaa näkyvyyden */
-    background: #232a27; /* Tumma tausta */
+    z-index: 2000;
+    background: #232a27;
     box-shadow: 0 2px 8px rgba(0,0,0,0.18);
     border-radius: 12px;
     padding: 0.5rem;
   }
   .mobile-top-bar input[type="text"] {
-    flex: 1 1 0; /* Joustava leveys */
-    min-width: 0; /* Estää ylileveytymisen */
+    flex: 1 1 0;
+    min-width: 0;
     padding: 0.7rem 1.2rem;
     border-radius: 8px;
     border: 1px solid #2e3833;
@@ -654,23 +742,23 @@ body {
     transition: flex-basis 0.3s, width 0.3s;
   }
   .mobile-top-bar button {
-    flex: 1 1 0; /* Joustava leveys */
-    min-width: 0; /* Estää ylileveytymisen */
-    background: #64701e; /* Vihreä nappi */
+    flex: 1 1 0;
+    min-width: 0;
+    background: #64701e;
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 0.7rem 0; /* Säädä paddingia tarpeen mukaan */
+    padding: 0.7rem 0;
     font-size: 1.1rem;
     font-weight: bold;
-    letter-spacing: 1px; /* Lisää hieman kirjanväliä */
+    letter-spacing: 1px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.10);
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
   }
 
   .recipe-item {
-    padding: 0.75rem; /* Pienennetään reseptikohteen paddingia */
+    padding: 0.75rem;
   }
   .recipe-name {
     font-size: 1.2rem;
@@ -683,24 +771,21 @@ body {
 @media (max-width: 600px) {
   body {
     background-position: center top;
-
-    
-    /* Voit säätää myös muita arvoja tarvittaessa */
   }
 }
 
 
 /* Virhevalidoinnin tyylit input-kentille */
 .input-error {
-  border-color: #dc3545 !important; /* Punainen reunus virheellisille kentille */
+  border-color: #dc3545 !important;
 }
 
 .validation-error-message {
-  color: #dc3545; /* Punainen teksti virheilmoituksille */
+  color: #dc3545;
   font-size: 0.9em;
   margin-top: 5px;
-  text-align: left; /* Varmistetaan, että virheilmoitus on vasemmalla */
-  padding-left: 5px; /* Pieni sisennys */
+  text-align: left;
+  padding-left: 5px;
 }
 
 /* Toast-ilmoituksen tyylit */
@@ -720,11 +805,11 @@ body {
 }
 
 .toast-notification.success {
-  background-color: #28a745; /* Vihreä */
+  background-color: #28a745;
 }
 
 .toast-notification.error {
-  background-color: #dc3545; /* Punainen */
+  background-color: #dc3545;
 }
 
 @keyframes fadeinout {
@@ -770,9 +855,9 @@ body {
 
 .app-logo {
   height: 120px;
-  max-width: 90vw; /* Estää logoa venymästä liikaa pienillä näytöillä */
-  display: block; /* Varmistaa, että margin: auto toimii */
-  margin: 0 auto; /* Keskittää logon headerissä */
+  max-width: 90vw;
+  display: block;
+  margin: 0 auto;
 }
 
 .ingredient-tooltip {
@@ -784,7 +869,7 @@ body {
   color: #fff;
   padding: 6px 12px;
   border-radius: 6px;
-  white-space: pre-line; /* Tämä mahdollistaa rivinvaihdot */
+  white-space: pre-line;
   font-size: 0.95rem;
   z-index: 10;
   margin-left: 12px;
