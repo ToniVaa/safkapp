@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db, doc, getDoc, updateDoc } from '../firebase';
 import './RecipeForm.css';
-// Cloudinary tiedot ympäristömuuttujista
+
 const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+const PLACEHOLDER_IMAGE_URL = '/assets/placeholder.png'; // Määritellään placeholder-kuvan polku
 
 const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
   const [name, setName] = useState('');
@@ -13,10 +14,10 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const nameInputRef = useRef(null);
-  const [imageFile, setImageFile] = useState(null); // Tila valitulle kuvatiedostolle
-  const [imagePreview, setImagePreview] = useState(''); // Tila kuvan esikatselulle (data URL)
-  const [currentImageUrl, setCurrentImageUrl] = useState(''); // Tila olemassa olevalle Cloudinary URL:lle
-  const [isUploading, setIsUploading] = useState(false); // Tila kuvan latauksen seurantaan
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [currentImageUrl, setCurrentImageUrl] = useState(''); // Säilyttää alkuperäisen URL:n, voi olla myös placeholder
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchRecipe = async () => {
@@ -36,14 +37,12 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
             }))
             : [{ name: '', amount: '', unit: '' }]);
           setInstructions(data.ohjeet ? data.ohjeet.join('\n') : '');
-          if (data.imageUrl) {
-            setCurrentImageUrl(data.imageUrl);
-            setImagePreview(data.imageUrl); // Näytä olemassa oleva kuva esikatselussa
-          } else {
-            setCurrentImageUrl('');
-            setImagePreview('');
-          }
-          setImageFile(null); // Nollaa tiedostovalinta aina ladattaessa
+          
+          const imageUrlFromDb = data.imageUrl || PLACEHOLDER_IMAGE_URL; // Käytä placeholderia, jos kuvaa ei ole
+          setCurrentImageUrl(imageUrlFromDb);
+          setImagePreview(imageUrlFromDb);
+          
+          setImageFile(null);
           if (nameInputRef.current) {
             nameInputRef.current.focus();
           }
@@ -63,7 +62,7 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
     if (recipeId) {
         fetchRecipe();
     } else {
-        setLoading(false);
+        setLoading(false); // Jos ei recipeId:tä, ei ladata mitään
     }
   }, [recipeId, onCloseEdit, showToast]);
 
@@ -73,24 +72,23 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
       setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImagePreview(reader.result); // Näytä valitun kuvan esikatselu
+        setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
     } else {
-      // Jos käyttäjä peruuttaa tiedoston valinnan, palauta esikatselu nykyiseen kuvaan (jos sellainen on)
-      // tai tyhjennä se, jos uutta tiedostoa ei valittu ja vanhaa ei ollut.
       setImageFile(null);
-      setImagePreview(currentImageUrl || '');
+      // Jos valinta peruutetaan, näytä nykyinen kuva (joka voi olla placeholder)
+      setImagePreview(currentImageUrl || PLACEHOLDER_IMAGE_URL);
     }
   };
 
   const uploadImageToCloudinary = async () => {
-    if (!imageFile) return currentImageUrl; // Jos uutta kuvaa ei ole valittu, palauta vanha URL
+    if (!imageFile) return null; // Ei ladata, jos uutta tiedostoa ei ole valittu
 
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
         console.error("Cloudinaryn asetukset puuttuvat. Tarkista .env tiedosto.");
         showToast("Kuvanlatauspalvelun asetukset puuttuvat.", "error");
-        return null; // Tai currentImageUrl riippuen halutusta toiminnasta
+        return null;
     }
 
     setIsUploading(true);
@@ -110,12 +108,12 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
       } else {
         console.error('Virhe kuvan lataamisessa Cloudinaryyn:', data);
         showToast("Kuvan päivittäminen epäonnistui.", "error");
-        return currentImageUrl; // Palauta vanha URL virheen sattuessa
+        return null; 
       }
     } catch (error) {
       console.error('Virhe kuvan lataamisessa Cloudinaryyn:', error);
       showToast("Kuvan päivittäminen epäonnistui.", "error");
-      return currentImageUrl; // Palauta vanha URL virheen sattuessa
+      return null;
     } finally {
       setIsUploading(false);
     }
@@ -202,19 +200,25 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
       return;
     }
     
-    let finalImageUrl = currentImageUrl; // Oletuksena vanha kuva
+    let finalImageUrl = currentImageUrl; // Oletuksena vanha kuva (joka voi olla placeholder)
 
     if (imageFile) { // Jos uusi kuva on valittu, ladataan se
         const uploadedUrl = await uploadImageToCloudinary();
         if (uploadedUrl) {
             finalImageUrl = uploadedUrl;
         } else {
-            // Jos lataus epäonnistui, mutta vanha kuva oli olemassa, käytetään sitä.
-            // Jos ei ollut vanhaa kuvaa ja lataus epäonnistui, finalImageUrl jää tyhjäksi tai nulliksi.
-            // Tässä vaiheessa uploadedUrl on jo palauttanut currentImageUrl, jos lataus epäonnistui ja kuva oli.
-            // Tai null/tyhjä, jos kuvaa ei ollut ja lataus epäonnistui.
-            // Joten 'finalImageUrl' pitäisi olla oikein asetettu uploadImageToCloudinary-funktion paluuarvon perusteella.
+            // Jos lataus epäonnistui, finalImageUrl säilyy currentImageUrl:na (joka voi olla placeholder tai vanha kuva)
+            // Jos halutaan ehdottomasti placeholder virheen sattuessa:
+            // finalImageUrl = PLACEHOLDER_IMAGE_URL;
+            // Mutta yleensä parempi säilyttää vanha kuva, jos uuden lataus epäonnistuu.
+            // Jos currentImageUrl oli placeholder, se pysyy placeholderina.
+            // Jos ei ollut kuvaa ja lataus epäonnistuu, finalImageUrl on nyt PLACEHOLDER_IMAGE_URL
+            if (finalImageUrl === PLACEHOLDER_IMAGE_URL || !finalImageUrl) {
+                 finalImageUrl = PLACEHOLDER_IMAGE_URL; // Varmistus placeholderille
+            }
         }
+    } else if (!finalImageUrl) { // Jos ei uutta tiedostoa eikä currentImageUrl:a (esim. kuva poistettu ja peruutettu)
+        finalImageUrl = PLACEHOLDER_IMAGE_URL;
     }
 
 
@@ -250,7 +254,7 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
         nimi: name.trim(),
         ainesosat: parsedIngredients,
         ohjeet: instructions.trim() ? instructions.trim().split('\n').filter(line => line.trim() !== '') : [],
-        imageUrl: finalImageUrl || null, // Tallenna uusi tai vanha URL, tai null
+        imageUrl: finalImageUrl || PLACEHOLDER_IMAGE_URL, // Varmistus
         muokattu: new Date().toISOString()
       });
       showToast("Resepti päivitetty onnistuneesti!", "success");
@@ -294,7 +298,6 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
           {errors.name && <p className="validation-error-message">{errors.name}</p>}
         </div>
 
-        {/* Reseptikuvan muokkaus/lisäys */}
         <div className="form-group">
           <label htmlFor="edit-recipeImage">Reseptikuva:</label>
           <input
@@ -306,19 +309,12 @@ const RecipeEditForm = ({ recipeId, onCloseEdit, showToast }) => {
             disabled={isUploading}
           />
           {isUploading && <p>Ladataan kuvaa...</p>}
-          {imagePreview && (
+          {imagePreview && ( // Näyttää aina esikatselun, jos se on olemassa (voi olla oikea kuva tai placeholder)
             <div className="image-preview-container">
-              <p>Nykyinen/uusi kuva:</p>
               <img src={imagePreview} alt="Reseptin esikatselu" className="image-preview" />
             </div>
           )}
-          {!imagePreview && currentImageUrl && ( // Tämä ehto on nyt tarpeeton, koska imagePreview näyttää currentImageUrl:n aluksi
-             <div className="image-preview-container">
-                <p>Nykyinen kuva:</p>
-                <img src={currentImageUrl} alt="Nykyinen reseptikuva" className="image-preview" />
-            </div>
-          )}
-          {!imagePreview && !currentImageUrl && <p>Ei kuvaa.</p>}
+          {!imagePreview && <p>Ei kuvaa. Tallentaessa lisätään oletuskuva.</p>}
         </div>
 
 

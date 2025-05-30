@@ -1,12 +1,11 @@
 // src/components/RecipeForm.js
 import React, { useState, useRef, useEffect } from 'react';
-import { db, collection, addDoc } from '../firebase'; // Varmista, että firebase.js on oikein määritelty
+import { db, collection, addDoc } from '../firebase';
 import './RecipeForm.css';
 
-
-// Cloudinary tiedot ympäristömuuttujista
 const CLOUDINARY_CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+const PLACEHOLDER_IMAGE_URL = '/assets/placeholder.png'; // Määritellään placeholder-kuvan polku
 
 const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData }) => {
   const [name, setName] = useState('');
@@ -15,9 +14,9 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
   const [errors, setErrors] = useState({});
   const nameInputRef = useRef(null);
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+  const [imagePreview, setImagePreview] = useState(''); // Aluksi tyhjä, voi näyttää placeholderin jos initialData on tyhjä
   const [isUploading, setIsUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState(''); // Tila Cloudinary URL:lle
+  const [imageUrl, setImageUrl] = useState('');
 
   useEffect(() => {
     if (nameInputRef.current) {
@@ -37,13 +36,13 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
         : [{ name: '', amount: '', unit: '' }];
       setIngredients(initialIngredients);
       setInstructions(initialData.ohjeet || '');
-      // Jos initialDatassa on imageUrl (esim. reseptin tuonnista), näytä se
-      if (initialData.imageUrl) {
+      
+      if (initialData.imageUrl && initialData.imageUrl !== PLACEHOLDER_IMAGE_URL) {
         setImageUrl(initialData.imageUrl);
         setImagePreview(initialData.imageUrl);
       } else {
-        setImageUrl('');
-        setImagePreview('');
+        setImageUrl(''); // Nollataan, jos placeholder tai ei kuvaa
+        setImagePreview(initialData.imageUrl === PLACEHOLDER_IMAGE_URL ? PLACEHOLDER_IMAGE_URL : ''); // Näytä placeholder, jos se on initialDatassa, muuten tyhjä
       }
       setImageFile(null);
       setErrors({});
@@ -51,12 +50,18 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       if (nameInputRef.current) {
         nameInputRef.current.focus();
       }
-
-      // Huom: onClearInitialData kutsutaan nyt vain, jos se on annettu.
-      // Jos haluat aina tyhjentää initialDatan käytön jälkeen, voit poistaa ehtolausekkeen.
       if (onClearInitialData) {
         onClearInitialData();
       }
+    } else {
+      // Jos ei initialDataa (eli luodaan täysin uutta reseptiä), esikatselu voi olla tyhjä tai placeholder
+      setImagePreview(''); // Tai PLACEHOLDER_IMAGE_URL, jos haluat sen näkyvän heti
+      setName('');
+      setIngredients([{ name: '', amount: '', unit: '' }]);
+      setInstructions('');
+      setImageFile(null);
+      setImageUrl('');
+      setErrors({});
     }
   }, [initialData, onClearInitialData]);
 
@@ -70,15 +75,16 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
-      setImageUrl(''); // Nollaa aiempi Cloudinary URL, jos uusi kuva valitaan
+      setImageUrl(''); 
     } else {
       setImageFile(null);
-      setImagePreview('');
+      setImagePreview(imageUrl || ''); // Palauta aiemmin ladattu Cloudinary URL tai tyhjä, jos uutta ei valita
+                                        // Jos haluat placeholderin tässä, logiikkaa voisi monimutkaistaa
     }
   };
 
   const uploadImageToCloudinary = async () => {
-    if (!imageFile) return null; // Palauta null, jos kuvaa ei ole valittu
+    if (!imageFile) return null;
 
     if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
       console.error("Cloudinaryn asetukset puuttuvat. Tarkista .env tiedosto.");
@@ -195,16 +201,18 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       return;
     }
 
-    let finalImageUrl = imageUrl; // Käytä olemassa olevaa URLia, jos kuvaa ei ladata uudelleen (esim. tuodusta datasta)
+    let finalImageUrl = imageUrl; 
 
-    if (imageFile) { // Jos uusi kuvatiedosto on valittu, yritä ladata se
+    if (imageFile) {
         const uploadedUrl = await uploadImageToCloudinary();
         if (uploadedUrl) {
             finalImageUrl = uploadedUrl;
-        } else if (!finalImageUrl) { // Jos lataus epäonnistui EIKÄ ole aiempaa URLia
+        } else if (!finalImageUrl) { 
             showToast("Kuvan lataus epäonnistui. Resepti tallennetaan ilman kuvaa.", "warning");
-            // Ei keskeytetä reseptin tallennusta, mutta kuva puuttuu
+            finalImageUrl = PLACEHOLDER_IMAGE_URL; // Käytä placeholderia jos lataus epäonnistuu JA aiempaa URLia ei ole
         }
+    } else if (!finalImageUrl) { // Jos ei ole valittu uutta tiedostoa EIKÄ ole aiempaa URLia (esim. initialData tyhjä)
+        finalImageUrl = PLACEHOLDER_IMAGE_URL;
     }
 
 
@@ -239,7 +247,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       ainesosat: processedIngredients,
       ohjeet: instructions.trim() ? instructions.trim().split('\n').filter(line => line.trim() !== '') : [],
       luotu: new Date().toISOString(),
-      imageUrl: finalImageUrl || null, // Lisää kuvan URL, tai null jos sitä ei ole
+      imageUrl: finalImageUrl || PLACEHOLDER_IMAGE_URL, // Varmistus: käytä placeholderia, jos finalImageUrl on vieläkin tyhjä
     };
 
     try {
@@ -248,7 +256,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
       setIngredients([{ name: '', amount: '', unit: '' }]);
       setInstructions('');
       setImageFile(null);
-      setImagePreview('');
+      setImagePreview(''); // Tyhjennä esikatselu onnistuneen lisäyksen jälkeen
       setImageUrl('');
       setErrors({});
       if (onRecipeAdded) {
@@ -291,7 +299,6 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
           {errors.name && <p className="validation-error-message">{errors.name}</p>}
         </div>
 
-        {/* Reseptikuvan lisäys */}
         <div className="form-group">
           <label htmlFor="recipeImage">Reseptikuva (valinnainen):</label>
           <input
@@ -308,6 +315,7 @@ const RecipeForm = ({ onRecipeAdded, showToast, initialData, onClearInitialData 
               <img src={imagePreview} alt="Reseptin esikatselu" className="image-preview" />
             </div>
           )}
+          {!imagePreview && <p>Ei kuvaa. Tallentaessa lisätään oletuskuva.</p>}
         </div>
 
 
