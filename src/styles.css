@@ -202,6 +202,8 @@ body {
 }
 
 .remove-ingredient-button {
+  width: 10%;
+  margin-left: 0; /* Tämä on tärkeä mobiilissa */
   background-color: #dc3545;
   color: white;
   border: none;

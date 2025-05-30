@@ -27,18 +27,18 @@
 
 .form-group input[type="text"],
 .form-group input[type="number"],
-.form-group input[type="file"], /* Lisätty file input */
+.form-group input[type="file"],
 .form-group textarea {
-    width: calc(100% - 20px); /* Adjust for padding */
+    width: calc(100% - 20px); 
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 1rem;
-    box-sizing: border-box; /* Include padding in width */
+    box-sizing: border-box; 
 }
 
 .form-group input[type="file"] {
-    padding: 5px; /* Hieman vähemmän paddingia file inputille */
+    padding: 5px; 
 }
 
 
@@ -46,8 +46,23 @@
     resize: vertical;
 }
 
+.image-preview-container {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center; 
+}
+
+.image-preview {
+    max-width: 100%; 
+    max-height: 200px; 
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    object-fit: cover; 
+}
+
 .ingredient-input-group {
     display: flex;
+    flex-wrap: wrap; /* Sallii rivinvaihdon, jos tarpeen (vaikuttaa virheviesteihin) */
     gap: 10px;
     margin-bottom: 10px;
     align-items: center;
@@ -61,18 +76,20 @@
 }
 
 .remove-ingredient-button {
-    background-color: #28a745; 
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background-color 0.2s ease;
+  background-color: #dc3545; 
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  margin-left: auto;  /* UUSI: Siirtää napin oikeaan laitaan */
+  flex-shrink: 0;     /* UUSI: Estää napin kutistumisen */
 }
 
 .remove-ingredient-button:hover {
-    background-color: #218838; 
+  background-color: #c82333; 
 }
 
 .add-ingredient-button {
@@ -84,8 +101,8 @@
     cursor: pointer;
     font-size: 1rem;
     margin-top: 10px;
-    display: block; 
-    width: 100%;
+    display: block;
+    width: 100%; 
     box-sizing: border-box;
     transition: background-color 0.2s ease;
 }
@@ -95,7 +112,7 @@
 }
 
 .submit-button {
-    background-color: #28a745; 
+    background-color: #28a745;
     color: white;
     border: none;
     padding: 12px 20px;
@@ -109,7 +126,7 @@
 }
 
 .submit-button:hover {
-    background-color: #218838; 
+    background-color: #218838;
 }
 
 .submit-button:disabled {
@@ -127,55 +144,60 @@
     text-align: center;
 }
 
-.error-message {
-    color: #28a745; 
-    background-color: #d4edda; 
-    border: 1px solid #c3e6cb; 
+.error-message { 
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
     padding: 10px;
     border-radius: 4px;
     margin-top: 15px;
     text-align: center;
 }
 
-/* Uudet tyylit kuvan esikatselulle */
-.image-preview-container {
-    margin-top: 10px;
-    margin-bottom: 10px;
-    text-align: center; /* Keskittää kuvan, jos se on pienempi kuin container */
-}
-
-.image-preview {
-    max-width: 100%; /* Varmistaa, että kuva ei ylitä containerin leveyttä */
-    max-height: 200px; /* Aseta maksimikorkeus esikatselukuvalle */
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    object-fit: cover; /* Säilyttää kuvasuhteen ja täyttää tilan, voi rajata */
-}
 
 .validation-error-message {
-    color: #dc3545; /* Punainen virheviesteille */
+    color: #dc3545; 
     font-size: 0.875em;
     margin-top: 4px;
+    /* Varmistetaan, että virheviestit menevät omille riveilleen tarvittaessa */
+    width: 100%; 
+    flex-basis: 100%;
 }
 
 .input-error {
-    border-color: #dc3545 !important; /* Korosta virheellinen kenttä punaisella */
+    border-color: #dc3545 !important; 
 }
 
-.cancel-button {
-    background-color: #6c757d; /* Harmaa peruutuspainikkeelle */
+.cancel-button { 
+    background-color: #6c757d; 
     color: white;
     border: none;
-    padding: 10px 15px; /* Pienempi kuin submit, mutta riittävä */
+    padding: 10px 15px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 1rem; /* Samankokoinen kuin add-ingredient */
-    margin-top: 10px; /* Erottele hieman submit-napista */
-    width: 100%; /* Täysleveä kuten muutkin napit */
+    font-size: 1rem;
+    margin-top: 10px;
+    width: 100%;
     box-sizing: border-box;
     transition: background-color 0.2s ease;
 }
 
 .cancel-button:hover {
-    background-color: #5a6268; /* Tummempi harmaa hoverissa */
+    background-color: #5a6268;
+}
+
+
+/* Mobiilikohtaiset muutokset RecipeFormin napeille */
+@media (max-width: 768px) {
+  
+  .recipe-form .add-ingredient-button {
+    padding: 0.7rem 1rem; 
+    font-size: 1rem;      
+  }
+
+  .recipe-form .remove-ingredient-button {
+    padding: 0.5rem 0.7rem; 
+    font-size: 0.80rem;   
+    /* margin-left: 0; tulee globaalista styles.css, joten se ylikirjoittaa 'auto' */
+  }
 }
